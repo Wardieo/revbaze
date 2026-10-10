@@ -1,0 +1,256 @@
+/* Shared visual foundation across dashboard, onboarding, and settings. */
+.app {
+  --bg: #f6f8fc;
+  --text: #243247;
+  --muted: #64748b;
+  --border: #e3e9f2;
+  --soft-blue: #edf2f8;
+  --soft-green: #eaf7f1;
+  --blue: #042751;
+}
+.app.dark {
+  --bg: #121822;
+  --surface: #1b2432;
+  --text: #e8eef7;
+  --muted: #a4b2c6;
+  --border: #2b394d;
+  --soft-blue: #243656;
+  --soft-green: #1c3b32;
+}
+.app .card {
+  border-radius: 14px;
+  border-color: var(--border);
+  box-shadow: 0 3px 16px #1e293b04;
+}
+.app .stat-card {
+  border-radius: 14px;
+  border-color: var(--border);
+  box-shadow: 0 3px 16px #1e293b04;
+  padding: 24px;
+}
+.app .stat-value {
+  letter-spacing: -1.2px;
+}
+.app .button {
+  border-radius: 9px;
+  min-height: 38px;
+  font-weight: 500;
+}
+.app .button.primary {
+  box-shadow: 0 3px 8px #0427511c;
+}
+.app .button.primary:hover:not(:disabled) {
+  background: #0b3869;
+}
+.app .button-outline:hover:not(:disabled) {
+  background: var(--bg);
+  border-color: #bdcce0;
+}
+.app .sidebar {
+  padding-top: 28px;
+}
+.app .nav-item {
+  border-radius: 9px;
+  min-height: 44px;
+  font-size: 13px;
+  gap: 12px;
+}
+.app .nav-item.active {
+  background: var(--soft-blue);
+  color: var(--blue);
+  font-weight: 600;
+}
+.app .nav-item:hover {
+  background: var(--bg);
+}
+.app .nav-item.active:hover {
+  background: var(--soft-blue);
+}
+.app .workspace {
+  border-radius: 11px;
+  box-shadow: 0 2px 8px #1e293b03;
+  padding: 12px 10px;
+}
+.app .topbar {
+  background: var(--surface);
+  border-color: var(--border);
+}
+.app .popover,
+.app .workspace-dropdown,
+.app .modal {
+  border-radius: 14px;
+  border-color: var(--border);
+  box-shadow: 0 18px 55px #0f172a18;
+}
+.app .modal {
+  padding: 30px;
+}
+.app .modal h2 {
+  font-size: 21px;
+  letter-spacing: -0.4px;
+}
+.app .card-heading h2 {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+.app
+  :is(.stack-form, .editor-fields)
+  :is(
+    input:not([type="checkbox"]):not([type="color"]):not([type="file"]),
+    select,
+    textarea
+  ) {
+  border-radius: 9px;
+  border-color: var(--border);
+  background: var(--surface);
+}
+.app :is(input:not([type="checkbox"]), select, textarea):focus-visible {
+  outline: 2px solid #0427515c;
+  outline-offset: 2px;
+}
+.app .checkbox-label {
+  gap: 11px;
+  min-height: 36px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.app .select-destination {
+  border-radius: 10px;
+  padding: 15px;
+  gap: 12px;
+}
+.app .select-destination:has(input:checked) {
+  border-color: #0427515c;
+  background: var(--soft-blue);
+}
+.app .setting-row {
+  gap: 16px;
+  min-height: 60px;
+  cursor: pointer;
+}
+.app .status-badge {
+  border-radius: 20px;
+  padding: 5px 10px;
+}
+.app .table-scroll thead {
+  background: var(--bg);
+}
+.app .table-scroll th {
+  font-weight: 500;
+  color: var(--muted);
+}
+.app .table-scroll td {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+.app .table-scroll tbody tr:hover {
+  background: var(--bg);
+}
+.app .onboard-form-panel {
+  border-radius: 16px;
+  box-shadow: 0 4px 25px #1e293b04;
+}
+.app .onboard-upload {
+  background: var(--bg);
+  border-radius: 11px;
+}
+.app .onboard-upload label {
+  font-weight: 500;
+}
+.app .auth-content :is(input, button) {
+  border-radius: 9px;
+}
+.app .auth-content input {
+  min-height: 46px;
+}
+.app .integration-card {
+  border-radius: 14px;
+}
+.app .onboard-templates > button {
+  border-radius: 11px;
+}
+.app.dark .button-outline:hover:not(:disabled) {
+  border-color: #425779;
+}
+@media (max-width: 600px) {
+  .app .stat-card {
+    padding: 20px;
+  }
+  .app .modal {
+    padding: 24px;
+  }
+}
+
+.editor-fields input[aria-invalid="true"] {
+  border-color: #dc5260;
+  box-shadow: 0 0 0 2px rgb(220 82 96 / 10%);
+}
+.editor-fields .form-error[id] {
+  margin-top: -8px;
+  font-size: 13px;
+}
+/* Readable workspace and onboarding controls without changing public branding. */
+.app .main-shell, .app .sidebar, .app.onboard-shell { font-size:14px; }
+.app .main-shell main p, .app .main-shell main label, .app .main-shell main input, .app .main-shell main textarea, .app .main-shell main select, .app .main-shell main td { font-size:14px; line-height:1.65; }
+.app .main-shell main h2 { font-size:18px; }
+.app .main-shell main .button, .app .sidebar .nav-link { font-size:14px; }
+.app .main-shell main small, .app .main-shell main .stat-description { font-size:12px; }
+.app .header-search input, .app .search-results a { font-size:14px; }
+.platform-plan-note { font-size:14px; padding:14px 18px; border:1px solid var(--border); border-radius:12px; background:var(--surface); }
+.app .sidebar .nav-item { font-size:14px; }
+.app .search-results { width:320px; max-width:calc(100vw - 32px); }
+.app .search-results a { padding:12px 0; }
+.app .search-results p { font-size:13px; }
+/* Card editor navigation matches the readable workspace type scale. */
+.app .editor-back { font-size:14px; line-height:1.6; flex-wrap:wrap; }
+.app .editor-back a { color:var(--muted); }
+.app .editor-tabs button { font-size:14px; font-weight:500; line-height:1.5; }
+.app .editor-tabs button:not(.selected) { color:var(--muted); }
+.app .breadcrumb { font-size:13px; }
+@media(max-width:600px) { .app .editor-tabs { gap:18px; overflow-x:auto; } .app .editor-tabs button { font-size:13px; white-space:nowrap; } .app .editor-back { font-size:13px; } }
+/* Consistent dashboard readability scale. Public pages keep their own type. */
+.app .main-shell, .app .account-settings { font-size:15px; }
+.app .main-shell main :is(p,label,td,li), .app .account-settings :is(p,label,td,li) { font-size:15px; line-height:1.65; }
+.app .main-shell main :is(input,textarea,select), .app .account-settings :is(input,textarea,select) { font-size:16px; line-height:1.5; }
+.app .main-shell main :is(h2,h3), .app .account-settings h2 { font-size:20px; line-height:1.4; }
+.app .main-shell main :is(small,th), .app .account-settings :is(small,th) { font-size:13px; line-height:1.6; }
+.app .main-shell main :is(.button,.editor-tabs button,.overview-periods button,.integration-categories button), .app .account-settings :is(.button,.account-tabs button) { font-size:15px; }
+.app .main-shell main :is(.stat-label,.stat-description,.subtle-label,.period-label,.destination-provider,.destination-url,.onboard-help,.overview-stat-detail,.overview-card-name small,.traffic-source-meta) { font-size:13px; line-height:1.6; }
+.app .main-shell main :is(.status-badge,.count-badge,.integration-status,.qr-studio-live,.overview-demo-label) { font-size:12px; }
+.app .main-shell main .stat-value { font-size:36px; }
+.app .sidebar .nav-item { font-size:15px; min-height:44px; }
+.app .sidebar :is(.workspace strong,.workspace-option-name,.sidebar-profile strong) { font-size:14px; }
+.app .sidebar :is(.workspace small,.sidebar-profile small,.workspace-option-subtitle) { font-size:12px; }
+.app .sidebar .nav-label { font-size:11px; }
+.app .breadcrumb { font-size:14px; }
+.app .workspace-search-field input { font-size:14px; }
+.app .main-shell main .recharts-cartesian-axis-tick-value { font-size:13px; }
+.app .main-shell .modal :is(p,label,button), .app .account-settings .modal :is(p,label,button) { font-size:15px; }
+.app .main-shell .modal :is(input,select,textarea), .app .account-settings .modal :is(input,select,textarea) { font-size:16px; }
+@media(max-width:600px) {
+ .app .main-shell main :is(h2,h3), .app .account-settings h2 { font-size:18px; }
+ .app .main-shell main .stat-value { font-size:30px; }
+ .app .main-shell main .editor-tabs { gap:16px; }
+}
+/* Dropdown indicators reflect the actual expanded menu state. */
+.app .profile-button > svg:last-child, .app .sidebar-profile > svg:last-child { transition:transform .16s ease; }
+.app .profile-button[aria-expanded="true"] > svg:last-child, .app .sidebar-profile[aria-expanded="true"] > svg:last-child { transform:rotate(180deg); }
+.app select:not([multiple]):not([size]) {
+ appearance:none;
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+ background-position:right 12px center;
+ background-repeat:no-repeat;
+ background-size:16px;
+ padding-right:38px;
+}
+.app select:not([multiple]):not([size]):open {
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 15 6-6 6 6'/%3E%3C/svg%3E");
+}
+@media(prefers-reduced-motion:reduce) { .app .profile-button > svg:last-child, .app .sidebar-profile > svg:last-child { transition:none; } }
+.app .copy-feedback-button { width:auto; flex-shrink:0; display:inline-flex; gap:6px; padding:8px; }
+.app .copy-feedback-button span { font-size:12px; color:var(--green); }
+/* Logo navy remains the primary action color; lighter ink preserves dark-mode legibility. */
+.app.dark { --blue:#9bbcdf; }
+.app.dark .button.primary,
+.app.dark .button-primary { background:#042751; color:#ffffff; border-color:#335c87; }

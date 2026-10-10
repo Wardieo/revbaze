@@ -1,0 +1,129 @@
+.business-switch-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 50% 40%, var(--soft-blue), transparent 65%),
+    var(--bg);
+  padding: 28px;
+}
+.business-switch-brand {
+  position: absolute;
+  top: 36px;
+  left: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+.business-switch-brand svg,
+.business-switch-brand > span {
+  color: var(--blue);
+}
+.business-switch-content {
+  text-align: center;
+  max-width: 480px;
+  width: 100%;
+  animation: business-switch-enter 0.3s ease both;
+}
+.business-switch-mark {
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 80px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 22px;
+  margin: 0 auto 26px;
+  box-shadow: 0 12px 40px #2531470a;
+  overflow: hidden;
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--blue);
+}
+.business-switch-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 10px;
+}
+.business-switch-content h1 {
+  font-size: 24px;
+  letter-spacing: -0.6px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.business-switch-content p {
+  margin: 12px 0 24px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.business-switch-spinner {
+  margin: auto;
+  color: var(--blue);
+  animation: business-switch-spin 1s linear infinite;
+}
+.business-switch-progress {
+  max-width: 200px;
+  height: 3px;
+  margin: 24px auto 0;
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+}
+.business-switch-progress span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: var(--blue);
+  border-radius: 4px;
+  animation: business-switch-progress 1.1s ease-in-out infinite;
+}
+.business-switch-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+@keyframes business-switch-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes business-switch-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(350%);
+  }
+}
+@keyframes business-switch-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .business-switch-content,
+  .business-switch-spinner,
+  .business-switch-progress span {
+    animation: none;
+  }
+}
+@media (max-width: 600px) {
+  .business-switch-brand {
+    top: 24px;
+    left: 24px;
+  }
+}

@@ -1,0 +1,36 @@
+.about-page { color: #042751; }
+.about-hero { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 64px; padding-top: 76px; padding-bottom: 88px; }
+.about-hero h1 { font-size: clamp(40px, 4.8vw, 68px); line-height: 1.08; letter-spacing: -.05em; margin: 24px 0; }
+.about-hero-copy > p { font-size: 19px; line-height: 1.75; color: #627187; max-width: 470px; margin-bottom: 30px; }
+.about-art { position: relative; min-height: 460px; overflow: hidden; border-radius: 28px; background: radial-gradient(circle at 85% 10%, #335c87, transparent 55%), #042751; box-shadow: 0 22px 55px #04275115; }
+.about-art::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(#ffffff25 1px, transparent 1px); background-size: 24px 24px; }
+.about-orbit { position: absolute; border: 1px solid #ffffff26; border-radius: 50%; width: 380px; height: 380px; left: calc(50% - 190px); top: 30px; }
+.about-orbit-two { width: 520px; height: 520px; left: calc(50% - 260px); top: -40px; }
+.about-art-center { position: absolute; top: 135px; left: 50%; transform: translateX(-50%); width: 240px; padding: 27px 18px; border: 1px solid #ffffff50; border-radius: 22px; background: #ffffff; display: grid; justify-items: center; gap: 12px; box-shadow: 0 16px 40px #0002; }
+.about-art-center strong { font-size: 22px; letter-spacing: -.5px; }
+.about-art-center span { font-size: 13px; color: #627187; }
+.about-note { position: absolute; display: flex; align-items: center; gap: 10px; padding: 15px 18px; border-radius: 14px; color: white; background: #ffffff12; border: 1px solid #ffffff30; backdrop-filter: blur(12px); font-size: 13px; animation: about-float 7s ease-in-out infinite; }
+.about-note-one { top: 45px; left: 25px; }
+.about-note-two { bottom: 85px; right: 20px; animation-delay: -2s; }
+.about-note-three { top: 100px; right: 20px; animation-delay: -4s; }
+.about-art-caption { position: absolute; bottom: 28px; width: 100%; text-align: center; font-size: 12px; letter-spacing: .04em; color: #c9d8e9; }
+.about-story { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; padding-top: 30px; padding-bottom: 95px; }
+.about-page h2 { font-size: clamp(30px, 3.2vw, 44px); line-height: 1.2; letter-spacing: -.035em; margin: 20px 0; }
+.about-story-copy p, .about-purpose p { font-size: 17px; line-height: 1.85; color: #627187; margin-bottom: 20px; }
+.about-principles-wrap { background: #f3f6fa; padding: 76px 0; border-block: 1px solid #e2e9f1; }
+.about-section-heading > p { font-size: 17px; color: #627187; }
+.about-principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 38px; }
+.about-principle { background: white; border: 1px solid #e2e9f1; border-radius: 20px; padding: 30px; }
+.about-principle > span { display: inline-flex; font-size: 14px; font-weight: 600; color: #335c87; margin-bottom: 32px; }
+.about-principle h3 { font-size: 21px; line-height: 1.35; letter-spacing: -.025em; margin-bottom: 14px; }
+.about-principle p { font-size: 16px; line-height: 1.8; color: #627187; }
+.about-purpose { display: grid; grid-template-columns: .85fr 1fr; gap: 90px; align-items: center; padding-block: 100px; }
+.about-purpose-art { height: 340px; position: relative; display: grid; place-items: center; overflow: hidden; border-radius: 26px; background: #edf2f8; }
+.about-purpose-art > div { position: absolute; width: 250px; height: 250px; border: 1px solid #04275125; border-radius: 60px; transform: rotate(35deg); }
+.about-purpose-art > div:nth-child(2) { width: 190px; height: 190px; transform: rotate(20deg); background: #04275106; }
+.about-purpose-art > div:nth-child(3) { width: 320px; height: 320px; transform: rotate(50deg); }
+.about-purpose-art > span { z-index: 1; display: grid; place-items: center; height: 106px; width: 106px; background: #042751; color: white; border-radius: 28px; box-shadow: 0 20px 40px #04275125; }
+@keyframes about-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@media (max-width: 900px) { .about-hero { gap: 30px; } .about-story, .about-purpose { gap: 40px; } .about-principle { padding: 22px; } .about-note { font-size: 11px; padding: 12px; } }
+@media (max-width: 650px) { .about-hero, .about-story, .about-purpose { grid-template-columns: 1fr; gap: 32px; padding-block: 48px; } .about-art { min-height: 410px; } .about-art-center { top: 115px; } .about-note-three { top: 80px; } .about-note-two { bottom: 58px; } .about-principles { grid-template-columns: 1fr; } .about-principles-wrap { padding-block: 48px; } .about-principle > span { margin-bottom: 18px; } .about-purpose-art { height: 280px; } }
+@media (prefers-reduced-motion: reduce) { .about-note { animation: none; } }

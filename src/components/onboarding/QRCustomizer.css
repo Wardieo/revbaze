@@ -1,0 +1,109 @@
+.onboard-qr-customizer {
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+}
+.onboard-qr-customizer h3 {
+  font-size: 15px;
+}
+.onboard-qr-styles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+.onboard-qr-styles button {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 16px 8px;
+  font-size: 11px;
+}
+.onboard-qr-styles button[aria-pressed="true"] {
+  border-color: var(--blue);
+  background: #f3f6fa;
+}
+.qr-style-swatch {
+  display: grid;
+  grid-template-columns: repeat(3, 6px);
+  gap: 2px;
+}
+.qr-style-swatch i {
+  width: 6px;
+  height: 6px;
+  background: #253147;
+}
+.qr-style-rounded i {
+  border-radius: 2px;
+}
+.qr-style-dots i {
+  border-radius: 50%;
+}
+.onboard-qr-colors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 18px 0;
+}
+.onboard-qr-colors label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+.onboard-qr-colors input {
+  width: 44px;
+  padding: 4px;
+}
+.onboard-qr-logo-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+  font-size: 12px;
+}
+.onboard-qr-logo-toggle input {
+  min-height: 0;
+}
+.onboard-qr-reset {
+  color: var(--blue);
+  font-size: 11px;
+  margin: 12px 0;
+}
+.onboard-qr-customizer .qr-preview {
+  margin-top: 24px;
+}
+
+.qr-customizer-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 36px;
+  border-top: 0;
+  padding-top: 0;
+}
+.qr-customizer-split .qr-customizer-preview {
+  padding: 24px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  align-self: start;
+}
+.qr-customizer-split .qr-preview {
+  margin: 0;
+}
+.qr-customizer-controls {
+  min-width: 0;
+}
+.qr-customizer-controls .onboard-help {
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 12px 0;
+}
+@media (max-width: 800px) {
+  .qr-customizer-split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+}

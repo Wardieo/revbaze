@@ -1,0 +1,17 @@
+.revbaze-brand-logo { display:inline-flex; align-items:center; gap:8px; color:inherit; font-weight:700; letter-spacing:-1px; white-space:nowrap; }
+.revbaze-brand-logo > img { display:block; width:40px; height:40px; flex:0 0 40px; object-fit:contain; border-radius:7px; }
+.revbaze-brand-dot { color:#042751; }
+.preview-powered .revbaze-brand-logo { gap:3px; letter-spacing:-.3px; }
+.preview-powered .revbaze-brand-logo > img { width:19px; height:19px; flex-basis:19px; border-radius:3px; }
+.auth-mobile-brand .revbaze-brand-logo { color:var(--text); }
+.sidebar-collapsed .revbaze-brand-logo > span { display:none; }
+@media(max-width:600px) { .revbaze-brand-logo > img { width:34px; height:34px; flex-basis:34px; } }
+.collapsed .sidebar .revbaze-brand-logo > span { display:none; }
+.revbaze-brand-logo > .brand-logo-dark { display:none; }
+.app.dark .revbaze-brand-logo > .brand-logo-light { display:none; }
+.app.dark .revbaze-brand-logo > .brand-logo-dark { display:block; }
+.app.dark .revbaze-brand-dot { color:#9bbcdf; }
+@media print {
+ .app.dark .revbaze-brand-logo > .brand-logo-light { display:block; }
+ .app.dark .revbaze-brand-logo > .brand-logo-dark { display:none; }
+}

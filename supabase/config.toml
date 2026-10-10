@@ -1,0 +1,18 @@
+[functions.billing]
+# Authentication is explicitly verified with Auth.getUser inside the handler.
+verify_jwt = false
+[functions.stripe-webhook]
+# Only a valid Stripe-Signature can enter reconciliation.
+verify_jwt = false
+
+[functions.review-events]
+# Public tracking validates published cards and enabled destinations server-side.
+verify_jwt = false
+
+[functions.contact-message]
+# Public contact endpoint validates payloads and applies private database rate limits.
+verify_jwt = false
+
+[functions.workspace-invite]
+# Owner identity is verified explicitly before the private reservation RPC.
+verify_jwt = false

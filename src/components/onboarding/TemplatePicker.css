@@ -1,0 +1,121 @@
+.onboard-templates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.onboard-templates > button {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: left;
+  background: var(--surface);
+  min-width: 0;
+}
+.onboard-templates > button[aria-pressed="true"] {
+  border-color: var(--blue);
+  background: #f3f6fa;
+  box-shadow: 0 0 0 1px var(--blue);
+}
+.onboard-templates > button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
+.onboard-templates strong,
+.onboard-templates small {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+}
+.onboard-templates small {
+  font-size: 10px;
+}
+.template-thumbnail {
+  height: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  background: #fff;
+  border: 1px solid #e5eaf2;
+  border-radius: 6px;
+  padding: 10px;
+}
+.template-thumbnail i {
+  display: block;
+  border-radius: 3px;
+  background: #dce5ef;
+}
+.template-thumbnail .thumbnail-logo {
+  width: 19px;
+  height: 19px;
+  background: #042751;
+  border-radius: 50%;
+}
+.template-thumbnail .thumbnail-title {
+  width: 55%;
+  height: 5px;
+}
+.template-thumbnail .thumbnail-copy {
+  width: 70%;
+  height: 3px;
+}
+.thumbnail-buttons {
+  display: grid;
+  gap: 4px;
+  width: 85%;
+  margin-top: 4px;
+}
+.thumbnail-buttons i {
+  height: 9px;
+  background: #edf2f8;
+}
+.template-thumbnail-left {
+  align-items: flex-start;
+}
+.template-thumbnail-left .thumbnail-buttons {
+  width: 100%;
+}
+.template-thumbnail-grid .thumbnail-buttons {
+  grid-template-columns: 1fr 1fr;
+}
+.template-thumbnail-grid .thumbnail-buttons i {
+  height: 16px;
+}
+.template-thumbnail-split {
+  display: grid;
+  grid-template-columns: 28% 1fr;
+  grid-template-rows: 19px 5px 1fr;
+  align-items: start;
+}
+.template-thumbnail-split .thumbnail-logo {
+  grid-row: 1 / 4;
+  width: 25px;
+  height: 25px;
+  margin-top: 15px;
+}
+.template-thumbnail-split .thumbnail-title,
+.template-thumbnail-split .thumbnail-copy {
+  width: 90%;
+}
+.template-thumbnail-split .thumbnail-buttons {
+  grid-column: 2;
+  width: 100%;
+}
+
+.onboard-templates > button {
+  display: block;
+}
+.onboard-template-field {
+  margin-bottom: 20px;
+}
+.onboard-template-field > .onboard-field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  margin-bottom: 9px;
+}
+.onboard-templates small {
+  color: var(--muted);
+  line-height: 1.6;
+  font-weight: 400;
+}

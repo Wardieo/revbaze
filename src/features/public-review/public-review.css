@@ -1,0 +1,42 @@
+.app.public-review-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 35px 20px;
+  background: var(--bg);
+}
+.public-review-shell .preview-card {
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 10px 40px #24334a0b;
+}
+.public-review-shell .preview-destination:hover {
+  filter: brightness(0.97);
+  transform: translateY(-1px);
+}
+.public-review-shell .preview-destination:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+/* Customer-facing cards remain readable and tappable at phone widths. */
+.public-review-shell .preview-card { min-width:0; overflow-wrap:anywhere; }
+.public-review-shell .preview-destination { min-height:48px; font-size:14px; }
+.public-review-shell .preview-destination > svg, .public-review-shell .preview-destination > .platform-icon { flex-shrink:0; }
+.public-review-shell .preview-destination > span { min-width:0; overflow-wrap:anywhere; }
+.public-review-shell .preview-card > p { font-size:14px; line-height:1.7; }
+.public-review-shell .preview-business-name { font-size:12px; }
+@media(max-width:600px) {
+  .app.public-review-shell { padding:24px max(14px,env(safe-area-inset-left)) 24px max(14px,env(safe-area-inset-right)); }
+  .public-review-shell .preview-card { padding:26px 20px 20px; max-width:440px; }
+  .public-review-shell .preview-card h2 { font-size:clamp(22px,6vw,27px); line-height:1.3; }
+  .public-review-shell .preview-card.template-split { grid-template-columns:minmax(0,1fr); grid-template-areas:"identity" "heading" "description" "destinations" "neutral" "powered" "notice"; text-align:center; }
+  .public-review-shell .template-split .preview-identity { padding:0; gap:10px; margin-bottom:20px; }
+  .public-review-shell .template-split .preview-business-mark { width:64px; height:64px; }
+  .public-review-shell .template-split .preview-destinations { margin-top:22px; }
+  .public-review-shell .template-grid .preview-destination { min-height:90px; padding:16px 10px; }
+  .public-review-shell .preview-neutral, .public-review-shell .preview-powered { flex-wrap:wrap; }
+  .public-review-shell .error-state { max-width:100%; padding:24px 18px; }
+}
+@media(max-width:340px) { .public-review-shell .preview-card { padding:24px 16px 18px; } .public-review-shell .template-grid .preview-destinations { grid-template-columns:minmax(0,1fr); } }
+@media(prefers-reduced-motion:reduce) { .public-review-shell .preview-destination:hover { transform:none; } }

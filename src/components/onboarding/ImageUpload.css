@@ -1,0 +1,76 @@
+.onboard-upload-field {
+  margin-top: 6px;
+}
+.onboard-field-label {
+  font-size: 11px;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 9px;
+}
+.onboard-upload {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border: 1px dashed #d4ddeb;
+  border-radius: 10px;
+  padding: 19px;
+  background: var(--bg);
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.onboard-upload.drag-over {
+  background: #edf2f8;
+  border-color: #042751;
+}
+.onboard-upload > svg {
+  color: #91a4c5;
+}
+.onboard-upload img {
+  width: 48px;
+  height: 48px;
+  border-radius: 9px;
+  object-fit: cover;
+}
+.onboard-upload > div {
+  flex: 1;
+}
+.onboard-upload label {
+  color: var(--blue);
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-block;
+}
+.onboard-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  min-height: 0;
+}
+.onboard-upload label:focus-within {
+  outline: 2px solid var(--blue);
+  outline-offset: 4px;
+}
+.onboard-upload small {
+  display: block;
+  font-size: 10px;
+  margin-top: 6px;
+}
+.onboard-inline-error {
+  color: #b64343 !important;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.onboard-upload-field > .onboard-field-label {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.onboard-upload-field > .onboard-field-label small {
+  color: var(--muted);
+  font-weight: 400;
+  margin-left: 5px;
+}

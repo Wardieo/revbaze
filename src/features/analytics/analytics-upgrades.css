@@ -1,0 +1,645 @@
+.analytics-comparison {
+  display: block;
+  font-size: 13px;
+  color: var(--blue);
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.analytics-period {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 16px 0;
+}
+.analytics-insight {
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  background: var(--blue-soft, #edf2f8);
+  border-radius: 14px;
+  margin-bottom: 20px;
+}
+.analytics-insight p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+.analytics-chart-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 24px 12px;
+}
+.analytics-chart-controls button {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 8px 12px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+.analytics-chart-controls button[aria-pressed="true"] {
+  background: var(--blue-soft, #edf2f8);
+  color: var(--blue);
+  border-color: var(--blue);
+}
+.analytics-chart-controls select {
+  margin-left: auto;
+}
+.traffic-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.analytics-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.app .analytics-page .analytics-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+}
+.app .analytics-page .analytics-filters select,
+.app .analytics-page .analytics-filters input {
+  min-height: 42px;
+  border-radius: 10px;
+  background-color: var(--surface);
+  max-width: 100%;
+}
+.app .analytics-page .analytics-export {
+  margin-left: auto;
+  min-height: 42px;
+  border-radius: 10px;
+}
+.analytics-page .stats-grid {
+  margin: 0;
+  gap: 16px;
+}
+.analytics-page .stat-card {
+  padding: 24px;
+  border-radius: 16px;
+  background: linear-gradient(
+    155deg,
+    var(--surface),
+    var(--surface) 75%,
+    var(--blue-soft, #edf2f8)
+  );
+  box-shadow: 0 4px 18px #20345804;
+}
+.analytics-page .stat-label > svg {
+  color: var(--blue);
+  background: var(--blue-soft, #edf2f8);
+  width: 32px;
+  height: 32px;
+  padding: 8px;
+  border-radius: 9px;
+}
+.analytics-page .stat-value {
+  margin: 14px 0 10px;
+  letter-spacing: -1px;
+}
+.analytics-page .analytics-comparison {
+  color: var(--muted);
+}
+.analytics-page .analytics-period {
+  margin: 0;
+  font-size: 13px;
+}
+.analytics-page .card {
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+.analytics-page .activity-card {
+  margin: 0;
+}
+.analytics-page .card-heading {
+  padding: 24px 24px 16px;
+}
+.analytics-page .card-heading h2 {
+  letter-spacing: -0.4px;
+}
+.analytics-page .analytics-chart-controls {
+  padding: 0 24px 8px;
+  gap: 8px;
+}
+.analytics-page .analytics-chart-controls button {
+  border-color: transparent;
+  padding: 9px 12px;
+  border-radius: 9px;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+.analytics-page .analytics-chart-controls button[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--blue-soft, #edf2f8);
+}
+.analytics-page .analytics-chart-controls button[aria-pressed="true"]::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #042751;
+  margin-right: 8px;
+}
+.analytics-page
+  .analytics-chart-controls
+  button:nth-child(2)[aria-pressed="true"]::before {
+  background: #67b096;
+}
+.analytics-page .analytics-chart-controls select {
+  min-height: 38px;
+  border-radius: 9px;
+}
+.analytics-page .dashboard-grid.bottom {
+  margin: 0;
+  gap: 20px;
+}
+.analytics-page .analytics-platform-change {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.analytics-page .analytics-insight {
+  margin: 0;
+}
+.analytics-page .phase-caption {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+}
+@media (max-width: 750px) {
+  .app .analytics-page .analytics-filters > select {
+    flex: 1 1 180px;
+    width: auto;
+  }
+  .app .analytics-page .analytics-export {
+    margin-left: 0;
+    flex: 1 1 180px;
+  }
+  .analytics-page .stat-card {
+    padding: 20px;
+  }
+  .analytics-page .analytics-chart-controls select {
+    margin-left: 0;
+  }
+}
+.analytics-section-message {
+  padding: 0 24px 24px;
+  color: var(--muted);
+}
+.analytics-page .performance-table tbody tr:hover {
+  background: var(--blue-soft, #edf2f8);
+}
+.analytics-print-brand {
+  display: none;
+}
+.analytics-weekday-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 24px 24px;
+}
+.analytics-weekday-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.analytics-weekday-grid b {
+  font-size: 25px;
+}
+.analytics-weekday-grid span,
+.analytics-weekday-grid small {
+  color: var(--muted);
+  font-size: 12px;
+}
+@media (max-width: 1000px) {
+  .analytics-weekday-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .analytics-weekday-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .analytics-page,
+  .analytics-page * {
+    visibility: visible;
+  }
+  .analytics-page {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+    color: #243959;
+  }
+  .analytics-page .analytics-filters,
+  .analytics-page .analytics-chart-controls {
+    display: none;
+  }
+  .analytics-print-brand {
+    display: block;
+    border-bottom: 2px solid #042751;
+    padding-bottom: 16px;
+  }
+  .analytics-page .table-scroll {
+    overflow: visible;
+  }
+  .analytics-page .stat-card,
+  .analytics-page .card {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+  .analytics-page .dashboard-grid.bottom {
+    grid-template-columns: 1fr;
+  }
+}
+/* Explicit longhands keep the shared dropdown chevron from tiling. */
+.app .analytics-page select {
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px 14px;
+  padding-right: 38px;
+}
+.analytics-comparison-visual {
+  padding: 0 24px 24px;
+}
+.comparison-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  padding: 0 0 20px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.comparison-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.comparison-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: #042751;
+}
+.comparison-legend span:nth-child(2) i {
+  background: #67b096;
+}
+.comparison-legend small {
+  margin-left: auto;
+}
+.comparison-rows {
+  display: grid;
+  gap: 14px;
+}
+.comparison-item {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  transition: background 0.2s;
+  min-width: 0;
+}
+.comparison-item:hover {
+  background: var(--blue-soft, #edf2f8);
+}
+.comparison-item-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.comparison-item-heading strong {
+  overflow-wrap: anywhere;
+}
+.comparison-item-heading > span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.comparison-bars {
+  display: grid;
+  gap: 6px;
+}
+.comparison-bar-track {
+  height: 12px;
+  border-radius: 4px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.comparison-bar-track i {
+  display: block;
+  height: 100%;
+  background: #042751;
+  border-radius: 4px;
+}
+.comparison-bar-track.clicks i {
+  background: #67b096;
+}
+.comparison-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.comparison-values b {
+  color: var(--text);
+}
+.vertical .comparison-rows {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+}
+.vertical .comparison-item {
+  padding: 16px 12px;
+}
+.vertical .comparison-item-heading {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.vertical .comparison-bars {
+  display: flex;
+  height: 150px;
+  align-items: flex-end;
+  gap: 8px;
+}
+.vertical .comparison-bar-track {
+  height: 100%;
+  width: 50%;
+  display: flex;
+  align-items: flex-end;
+}
+.vertical .comparison-bar-track i {
+  width: 100%;
+}
+.vertical .comparison-values {
+  flex-direction: column;
+  gap: 5px;
+}
+@media (max-width: 1000px) {
+  .vertical .comparison-rows {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .vertical .comparison-rows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .comparison-legend small {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+/* Quiet surfaces and a consistent blue/teal visual language. */
+.comparison-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(
+    120deg,
+    var(--blue-soft, #edf2f8),
+    var(--surface)
+  );
+}
+.comparison-summary > div {
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.comparison-summary > div + div {
+  border-left: 1px solid var(--border);
+}
+.comparison-summary span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.comparison-summary strong {
+  font-size: 28px;
+  letter-spacing: -0.8px;
+  font-weight: 650;
+}
+.comparison-summary strong small {
+  font-size: 17px;
+  margin-left: 3px;
+  color: var(--muted);
+}
+.comparison-legend {
+  gap: 16px;
+}
+.comparison-legend small {
+  font-size: 11px;
+}
+.comparison-item {
+  padding: 20px;
+  border-color: transparent;
+  background: var(--bg);
+  box-shadow: none;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.comparison-item:hover {
+  border-color: var(--border);
+  background: var(--surface);
+}
+.comparison-item-heading strong {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.comparison-rank {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.comparison-ctr {
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.comparison-bar-track {
+  background: color-mix(in srgb, var(--border) 55%, transparent);
+  height: 9px;
+  border-radius: 5px;
+}
+.comparison-bar-track i {
+  background: linear-gradient(90deg, #517ba5, #042751);
+  border-radius: 5px;
+}
+.comparison-bar-track.clicks i {
+  background: linear-gradient(90deg, #9cd9c6, #52a88c);
+}
+.comparison-values {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+.vertical .comparison-rows {
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.vertical .comparison-item {
+  border: 0;
+  border-radius: 0;
+  padding: 20px 14px;
+  background: var(--surface);
+}
+.vertical .comparison-item + .comparison-item {
+  border-left: 1px solid var(--border);
+}
+.vertical .comparison-item.leading {
+  background: var(--blue-soft, #edf2f8);
+}
+.vertical .comparison-item-heading {
+  gap: 8px;
+}
+.vertical .comparison-item-heading strong {
+  font-size: 14px;
+}
+.vertical .comparison-ctr {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 11px;
+}
+.vertical .comparison-bars {
+  height: 170px;
+  gap: 6px;
+  padding: 0 8px;
+  background: repeating-linear-gradient(
+    to top,
+    transparent 0,
+    transparent 41px,
+    var(--border) 42px,
+    transparent 43px
+  );
+}
+.vertical .comparison-bar-track {
+  background: transparent;
+  max-width: 28px;
+  border-radius: 5px 5px 0 0;
+  margin: auto 0 0;
+}
+.vertical .comparison-bar-track i {
+  border-radius: 5px 5px 0 0;
+}
+.vertical .comparison-values {
+  margin-top: 16px;
+}
+@media (max-width: 600px) {
+  .comparison-summary > div {
+    padding: 14px 12px;
+  }
+  .comparison-summary strong {
+    font-size: 23px;
+  }
+  .comparison-summary span {
+    font-size: 11px;
+  }
+  .vertical .comparison-bars {
+    height: 130px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .comparison-item {
+    transition: none;
+  }
+}
+.comparison-line-chart {
+  width: 100%;
+  height: 285px;
+  min-width: 0;
+  margin: 0 0 20px;
+}
+.comparison-chart-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 8px 30px #20345814;
+  font-size: 13px;
+  min-width: 200px;
+}
+.comparison-chart-tooltip strong {
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+.comparison-chart-tooltip span {
+  display: flex;
+  justify-content: space-between;
+  gap: 22px;
+  color: var(--muted);
+}
+.comparison-chart-tooltip b {
+  color: var(--text);
+}
+.analytics-comparison-visual:not(.vertical) .comparison-rows {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+.comparison-item-heading {
+  margin-bottom: 0;
+}
+@media (max-width: 600px) {
+  .comparison-line-chart {
+    height: 240px;
+  }
+}
+.analytics-comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.analytics-comparison-grid > .card {
+  min-width: 0;
+}
+.analytics-comparison-grid:not(:has(> .card:nth-child(2))) {
+  grid-template-columns: 1fr;
+}
+@media (max-width: 1100px) {
+  .analytics-comparison-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media print {
+  .analytics-comparison-grid {
+    grid-template-columns: 1fr;
+  }
+}
