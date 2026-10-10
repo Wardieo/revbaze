@@ -33,6 +33,8 @@ export type CardAppearance = {
   background_style?: "solid" | "gradient" | "dots" | "abstract" | "waves";
   border_style?: "none" | "solid" | "dashed";
   border_color?: string;
+  title_color?: string;
+  paragraph_color?: string;
   button_style: "filled" | "outline" | "soft";
   radius: "square" | "rounded" | "pill";
 };

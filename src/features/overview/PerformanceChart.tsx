@@ -10,8 +10,10 @@ import {
 } from "recharts";
 export default function PerformanceChart({
   data,
+  masked = false,
 }: {
   data: { date: string; views: number; clicks: number }[];
+  masked?: boolean;
 }) {
   const [visible, setVisible] = useState({ views: true, clicks: true });
   return (
@@ -36,7 +38,7 @@ export default function PerformanceChart({
       <div className="activity-chart">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
-            data={data}
+            data={masked ? data.map(point => ({ ...point, clicks: 0 })) : data}
             margin={{ top: 15, right: 12, left: -18, bottom: 5 }}
             accessibilityLayer
           >
@@ -66,6 +68,7 @@ export default function PerformanceChart({
               allowDecimals={false}
             />
             <Tooltip
+              formatter={masked ? (value, name) => [name === "Outbound clicks" ? "—" : value, name] : undefined}
               labelFormatter={(date) =>
                 new Date(String(date)).toLocaleDateString("en-US", {
                   month: "long",

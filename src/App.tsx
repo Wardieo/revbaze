@@ -114,10 +114,11 @@ function Workspace() {
     "/accept-invitation",
   ].includes(location.pathname);
   const status = useQuery({
-    queryKey: ["onboarding-status", session?.user.id, location.pathname],
+    queryKey: ["onboarding-status", session?.user.id],
     queryFn: loadOnboardingStatus,
     enabled: ready && Boolean(supabase && session) && !isAuth && !isPublic,
-    staleTime: 0,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
     retry: false,
   });
   const [switching, setSwitching] = useState<{
@@ -178,7 +179,7 @@ function Workspace() {
         client.fetchQuery({
           queryKey: ["workspace", session?.user.id || "local", id],
           queryFn: () => loadWorkspace(id),
-          staleTime: 0,
+          staleTime: 120_000,
         }),
         new Promise((resolve) =>
           setTimeout(
@@ -230,7 +231,7 @@ function Workspace() {
     refetchInterval: ["/overview", "/analytics", "/cards"].includes(
       location.pathname,
     )
-      ? 30_000
+      ? 60_000
       : false,
     enabled:
       needsWorkspace &&

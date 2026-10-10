@@ -20,8 +20,7 @@ export function useLiveWorkspace(
       !supabase ||
       !userId ||
       !businessId ||
-      loadedBusiness !== businessId ||
-      !cardIds
+      loadedBusiness !== businessId
     )
       return;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -37,7 +36,11 @@ export function useLiveWorkspace(
     const channel = supabase.channel(
       `workspace-events:${userId}:${businessId}`,
     );
-    const ids = cardIds.split(",");
+    for (const table of ["review_cards", "business_review_links"]) {
+      channel.on("postgres_changes", { event: "*", schema: "public", table, filter: `business_id=eq.${businessId}` }, refresh);
+    }
+    channel.on("postgres_changes", { event: "UPDATE", schema: "public", table: "businesses", filter: `id=eq.${businessId}` }, refresh);
+    const ids = cardIds ? cardIds.split(",") : [];
     // Realtime IN filters accept at most 100 values per binding.
     for (let offset = 0; offset < ids.length; offset += 100) {
       channel.on(

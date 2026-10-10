@@ -71,9 +71,14 @@ export async function renderQR(
   try {
     const image = await loadQRImage(object);
     const canvas = document.createElement("canvas");
-    canvas.width = 400;
-    canvas.height = 400;
-    canvas.getContext("2d")!.drawImage(image, 0, 0, 400, 400);
+    // Whole pixels per module preserve crisp edges and the four-module quiet zone.
+    const dimension = Number(svg.match(/viewBox="0 0 (\d+)/)![1]);
+    const pixels = dimension * Math.max(12, Math.ceil(800 / dimension));
+    canvas.width = pixels;
+    canvas.height = pixels;
+    const context = canvas.getContext("2d")!;
+    context.imageSmoothingEnabled = false;
+    context.drawImage(image, 0, 0, pixels, pixels);
     return { svg, png: canvas.toDataURL("image/png") };
   } finally {
     URL.revokeObjectURL(object);

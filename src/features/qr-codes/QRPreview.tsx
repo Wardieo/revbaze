@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { renderQR } from "../../lib/qr";
 import type { QRStyle } from "../../lib/qr";
-import { Download } from "lucide-react";
+import { Dialog } from "../../components/shared/Feedback";
+import { Download, ScanLine } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { useFeedback } from "../../hooks/useFeedback";
 export function QRPreview({
   url,
-  foreground = "#253147",
+  foreground = "#000000",
   background = "#ffffff",
   logo = "",
   style = "square",
@@ -33,6 +34,7 @@ export function QRPreview({
     svg: "",
     error: "",
   });
+  const [scanOpen, setScanOpen] = useState(false);
   const ready = result.key === key && Boolean(result.png);
   const notify = useFeedback();
   useEffect(() => {
@@ -92,6 +94,18 @@ export function QRPreview({
           </div>
         )}
       </div>
+      <Button disabled={!ready} onClick={() => setScanOpen(true)}>
+        <ScanLine size={16} /> Enlarge to scan
+      </Button>
+      {scanOpen && (
+        <Dialog title="Scan your review QR code" close={() => setScanOpen(false)}>
+          <div className="qr-scan-preview">
+            {ready ? <img src={result.png} alt={`Scan to open ${url}`} /> : <p>Generating QR code…</p>}
+            <p>Point your phone’s camera at this code. No download needed.</p>
+            <a href={url} target="_blank" rel="noopener noreferrer">Open review page</a>
+          </div>
+        </Dialog>
+      )}
       <div className="qr-downloads">
         <Button disabled={!ready} onClick={() => download("png")}>
           <Download size={14} />

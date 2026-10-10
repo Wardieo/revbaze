@@ -35,7 +35,7 @@ export function usePlan(businessId?: string | null) {
       return data as PlanStatus;
     },
     retry: false,
-    staleTime: 0,
+    staleTime: 30_000,
     refetchInterval: 30_000,
   });
   const status = query.data;

@@ -3679,3 +3679,28 @@ input[type="color"] {
   .wp-404 .wp-ring:nth-child(4) { transform: scale(1.2); }
   .wp-404 .wp-ring:nth-child(5), .wp-404 .wp-ring:nth-child(6) { opacity: 0; }
 }
+
+.editor-fields .qr-image { width:min(300px,100%); height:auto; aspect-ratio:1; flex-shrink:0; }
+.qr-image > img { image-rendering:pixelated; }
+
+.qr-scan-preview { display:flex; flex-direction:column; align-items:center; gap:16px; text-align:center; }
+.qr-scan-preview img { display:block; width:min(420px,100%); height:auto; aspect-ratio:1; image-rendering:pixelated; background:white; }
+.qr-scan-preview p { margin:0; font-size:14px; line-height:1.6; }
+.qr-scan-preview a { color:#042751; font-weight:600; }
+
+.preview-card .preview-powered {
+  line-height:19px;
+}
+.preview-card .preview-powered strong {
+  vertical-align:middle;
+}
+.preview-card .preview-powered strong {
+  display:inline-flex;
+  align-items:center;
+  margin-left:3px;
+}
+.preview-card .preview-powered strong > .revbaze-brand-logo {
+  color:#042751;
+  align-items:center;
+}
+.preview-card .preview-powered .revbaze-brand-logo > span { color:#042751; }

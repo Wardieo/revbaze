@@ -217,6 +217,8 @@ export async function saveCard(card: ReviewCard) {
   validateSlug(card.slug);
   validateColor(card.appearance_settings.accent);
   validateColor(card.appearance_settings.background);
+  if (card.appearance_settings.title_color) validateColor(card.appearance_settings.title_color);
+  if (card.appearance_settings.paragraph_color) validateColor(card.appearance_settings.paragraph_color);
   if (!card.name.trim() || !card.headline.trim())
     throw new Error("Card name and heading are required.");
   if (supabase) {

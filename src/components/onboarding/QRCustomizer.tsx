@@ -31,7 +31,7 @@ export function QRCustomizer({
   const [settings, setSettings] = useState<Settings>(() => {
     const defaults: Settings = {
       style: "square",
-      foreground: "#253147",
+      foreground: "#000000",
       background: "#ffffff",
       logo: businessLogo,
       includeLogo: Boolean(businessLogo),
@@ -116,7 +116,7 @@ export function QRCustomizer({
               QR color
               <input
                 type="color"
-                value={custom ? settings.foreground : "#253147"}
+                value={custom ? settings.foreground : "#000000"}
                 onChange={(e) => update({ foreground: e.target.value })}
               />
             </label>
@@ -161,7 +161,7 @@ export function QRCustomizer({
         <QRPreview
           url={url}
           style={custom ? settings.style : "square"}
-          foreground={custom ? settings.foreground : "#253147"}
+          foreground={custom ? settings.foreground : "#000000"}
           background={custom ? settings.background : "#ffffff"}
           logo={custom && settings.includeLogo ? settings.logo : ""}
         />

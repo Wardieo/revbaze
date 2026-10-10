@@ -109,16 +109,17 @@ export function slugify(value: string) {
 export function cardUrl(slug: string) {
   const current =
     typeof window !== "undefined"
-      ? window.location.origin + window.location.pathname
+      ? window.location.origin + "/"
       : "https://revbaze.com/";
-  // A production domain in .env must not make local preview/share links unreachable.
-  const base = import.meta.env.DEV
-    ? current
-    : import.meta.env.VITE_PUBLIC_CARD_ORIGIN || current;
+  // Shared links and QR codes always use the configured public destination.
+  const base = import.meta.env.VITE_PUBLIC_CARD_ORIGIN?.trim() || current;
   const url = new URL(base);
   url.search = "";
   url.hash = `/review/${encodeURIComponent(slug)}`;
   return url.toString();
+}
+export function cardQRUrl(slug: string, source = "qr") {
+  return `${cardUrl(slug)}?utm_source=${encodeURIComponent(source.trim().toLowerCase() || "qr")}`;
 }
 export function validateColor(value: string) {
   if (!/^#[0-9a-f]{6}$/i.test(value))

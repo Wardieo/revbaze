@@ -26,9 +26,9 @@ import { CardPreview } from "./CardPreview";
 import { cardPageBackground } from "./cardPageBackground";
 import { TemplatePicker } from "../../components/onboarding/TemplatePicker";
 import { uploadImage } from "../../services/workspace";
-import { cardUrl, slugify, validateSlug } from "../../lib/validation";
+import { cardUrl, cardQRUrl, slugify, validateSlug } from "../../lib/validation";
 import type { ReviewCard } from "../../types/workspace";
-import { QRPreview } from "../qr-codes/QRPreview";
+import { QRCustomizer } from "../../components/onboarding/QRCustomizer";
 export function CardEditor({ onComplete }: { onComplete?: () => void }) {
   const permissions = useWorkspaceRole();
   const access = usePlan();
@@ -718,6 +718,10 @@ export function CardEditor({ onComplete }: { onComplete?: () => void }) {
                     </div>
                   </label>
                 </div>
+                <div className="form-columns">
+                  <label>Title text color<div className="color-input"><input type="color" aria-label="Title text color" value={card.appearance_settings.title_color || "#303846"} onChange={e => appearance({ title_color: e.target.value })} /><span>{card.appearance_settings.title_color || "#303846"}</span></div></label>
+                  <label>Paragraph text color<div className="color-input"><input type="color" aria-label="Paragraph text color" value={card.appearance_settings.paragraph_color || "#8c98ab"} onChange={e => appearance({ paragraph_color: e.target.value })} /><span>{card.appearance_settings.paragraph_color || "#8c98ab"}</span></div></label>
+                </div>
                 <label>Background behind the card<div className="color-input"><input type="color" aria-label="Page background color" value={card.appearance_settings.page_background || "#f3f6fa"} onChange={e => appearance({ page_background: e.target.value })} /><span>{card.appearance_settings.page_background || "#f3f6fa"}</span></div></label>
                 <div className="card-background-presets" role="group" aria-label="Page background color presets">
                   <Button onClick={() => appearance({ page_background: "#ffffff" })}>White</Button>
@@ -794,7 +798,12 @@ export function CardEditor({ onComplete }: { onComplete?: () => void }) {
                     : "Save and activate your card before sharing it with customers."}
                 </div>
                 {existing && card.slug === existing.slug && (
-                  <QRPreview url={`${cardUrl(existing.slug)}?utm_source=qr`} />
+                  <QRCustomizer
+                    key={existing.id}
+                    url={cardQRUrl(existing.slug)}
+                    businessId={existing.business_id}
+                    businessLogo={existing.appearance_settings.logo_url || workspace.business?.logo_url || ""}
+                  />
                 )}
                 {!existing && (
                   <p className="form-help">

@@ -478,7 +478,7 @@
 }
 .upgrade-gate-bars i {
   flex: 1;
-  background: linear-gradient(#9ebbf6, #e9f1ff);
+  background: linear-gradient(#042751, #04275120);
   border-radius: 5px 5px 0 0;
 }
 .upgrade-gate-logos {

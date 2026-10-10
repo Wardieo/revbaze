@@ -1,3 +1,4 @@
+import { queryClient } from "./queryClient";
 import { createClient } from "@supabase/supabase-js";
 import { callbackDetails } from "./auth";
 import { createAuthFetch } from "./authFetch";
@@ -16,6 +17,7 @@ export async function signOutFully(): Promise<{ error: { message: string } | nul
   } catch {
     console.warn("Remote sign-out could not complete; clearing this browser session.");
   } finally {
+    queryClient.clear();
     clearPasswordRecovery();
     const storageKey = `sb-${new URL(url).hostname.split(".")[0]}-auth-token`;
     for (const store of [localStorage, sessionStorage]) {
@@ -42,7 +44,11 @@ export function isPasswordRecoverySession(userId: string | undefined) {
     return false;
   }
 }
+let cachedUserId: string | undefined;
 supabase?.auth.onAuthStateChange((event, session) => {
+  const nextUserId = session?.user.id;
+  if (event === "SIGNED_OUT" || (cachedUserId && cachedUserId !== nextUserId)) queryClient.clear();
+  cachedUserId = nextUserId;
   if (event === "PASSWORD_RECOVERY" && authCallback.active && authCallback.recovery && session) {
     recoveryUser = session.user.id;
     recoveryExpiresAt = Date.now() + 15 * 60_000;

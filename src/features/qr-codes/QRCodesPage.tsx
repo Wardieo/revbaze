@@ -15,7 +15,7 @@ import {
 import { useWorkspace } from "../../stores/workspace";
 import { EmptyState } from "../../components/shared/Feedback";
 import { Button } from "../../components/ui/Button";
-import { cardUrl } from "../../lib/validation";
+import { cardQRUrl } from "../../lib/validation";
 import "./qr-studio.css";
 import { QRCustomizer } from "../../components/onboarding/QRCustomizer";
 export function QRCodesPage() {
@@ -34,7 +34,7 @@ export function QRCodesPage() {
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [source, setSource] = useState("qr");
   const destination = card
-    ? `${cardUrl(card.slug)}${cardUrl(card.slug).includes("?") ? "&" : "?"}utm_source=${encodeURIComponent(source.trim().toLowerCase() || "qr")}`
+    ? cardQRUrl(card.slug, source)
     : "";
   const copied = Boolean(destination) && copiedUrl === destination;
   useEffect(

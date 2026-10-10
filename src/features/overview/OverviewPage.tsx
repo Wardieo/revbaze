@@ -71,18 +71,18 @@ export function OverviewPage() {
     },
     {
       name: "Review Link Clicks",
-      value: available ? number(data.stats.clicks) : "—",
+      value: platformAccess ? number(data.stats.clicks) : "—",
       icon: MousePointerClick,
       current: data.stats.clicks,
-      previous: data.previous.clicks,
+      previous: platformAccess ? data.previous.clicks : 0,
       detail: "Outbound clicks to review platforms",
     },
     {
       name: "Click-Through Rate",
-      value: available ? data.stats.ctr.toFixed(1) + "%" : "—",
+      value: platformAccess ? data.stats.ctr.toFixed(1) + "%" : "—",
       icon: ArrowUpRight,
       current: data.stats.ctr,
-      previous: data.previous.ctr,
+      previous: platformAccess ? data.previous.ctr : 0,
       detail: "Link clicks divided by page views",
     },
     {
@@ -179,7 +179,7 @@ export function OverviewPage() {
           </div>
           <Suspense fallback={<Skeleton />}>
             {available ? (
-              <PerformanceChart data={data.chart} />
+              <PerformanceChart data={data.chart} masked={!platformAccess} />
             ) : (
               <div className="overview-empty">
                 <Eye size={28} />
@@ -378,8 +378,8 @@ export function OverviewPage() {
                     </div>
                   </td>
                   <td>{available ? number(c.views) : "—"}</td>
-                  <td>{available ? number(c.clicks) : "—"}</td>
-                  <td>{available ? c.ctr.toFixed(1) + "%" : "—"}</td>
+                  <td>{platformAccess ? number(c.clicks) : "—"}</td>
+                  <td>{platformAccess ? c.ctr.toFixed(1) + "%" : "—"}</td>
                   <td>
                     <span
                       className={`status-badge ${c.active ? "active" : "inactive"}`}

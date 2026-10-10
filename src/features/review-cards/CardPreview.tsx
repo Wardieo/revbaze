@@ -55,12 +55,12 @@ export function CardPreview({
             appearance.business_name.charAt(0) || <Heart size={23} />
           )}
         </div>
-        <div className="preview-business-name">
+        <div className="preview-business-name" style={{ color: appearance.paragraph_color || undefined }}>
           {appearance.business_name || "Your business"}
         </div>
       </div>
-      <h2>{card.headline || "Your experience matters."}</h2>
-      <p>
+      <h2 style={{ color: appearance.title_color || undefined }}>{card.headline || "Your experience matters."}</h2>
+      <p style={{ color: appearance.paragraph_color || undefined }}>
         {card.description ||
           "Choose your favorite platform and share your experience with us."}
       </p>
@@ -123,11 +123,11 @@ export function CardPreview({
           </div>
         )}
       </div>
-      <div className="preview-neutral">
+      <div className="preview-neutral" style={{ color: appearance.paragraph_color || undefined }}>
         <Heart size={11} />
         Every experience is welcome.
       </div>
-      <div className="preview-powered">
+      <div className="preview-powered" style={{ color: appearance.paragraph_color || undefined }}>
         Made with{" "}
         <strong>
           <BrandLogo />

@@ -124,6 +124,12 @@ try {
     cardUrl("acme-studio"),
     "https://revbaze.com/#/review/acme-studio",
   );
+  const publicOriginSource = (await readFile(join(dir, "validation.mjs"), "utf8"))
+    .replaceAll("({})", '({ DEV: true, VITE_PUBLIC_CARD_ORIGIN: "https://revbaze.vercel.app/" })');
+  await writeFile(join(dir, "validation-public-origin.mjs"), publicOriginSource);
+  const publicOriginLinks = await import(pathToFileURL(join(dir, "validation-public-origin.mjs")));
+  assert.equal(publicOriginLinks.cardUrl("acme-studio"), "https://revbaze.vercel.app/#/review/acme-studio");
+  assert.equal(publicOriginLinks.cardQRUrl("acme-studio"), "https://revbaze.vercel.app/#/review/acme-studio?utm_source=qr");
   assert.deepEqual(previousAnalyticsRange("2026-10-01", "2026-10-07"), {
     from: "2026-09-24",
     to: "2026-09-30",

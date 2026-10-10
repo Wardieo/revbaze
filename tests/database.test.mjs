@@ -35,6 +35,7 @@ await db.exec(await readFile("supabase/migrations/202610100022_onboarding_card_b
 await db.exec(await readFile("supabase/migrations/202610100023_card_background_styles.sql", "utf8"));
 await db.exec(await readFile("supabase/migrations/202610100024_card_page_background.sql", "utf8"));
 await db.exec(await readFile("supabase/migrations/202610100025_abstract_page_background.sql", "utf8"));
+await db.exec(await readFile("supabase/migrations/202610100026_card_text_colors.sql", "utf8"));
 const buckets = (
   await db.query(
     "select * from storage.buckets where id in ('profile-assets','business-assets')",
@@ -411,8 +412,13 @@ const published = (
 assert.equal(published.card.appearance_settings.background, "#edf2f8");
 assert.equal(published.card.appearance_settings.border_style, "dashed");
 assert.equal(published.card.appearance_settings.border_color, "#042751");
+await db.exec("reset role");
+await db.query("update public.review_cards set appearance_settings=appearance_settings || $1::jsonb where id=$2", [JSON.stringify({title_color:"#042751",paragraph_color:"#52647b"}), published.card.id]);
+await db.exec("set role authenticated");
 const publicBorder=(await db.query("select public.published_review_card($1) as card",[published.card.slug])).rows[0].card;
 assert.equal(publicBorder.appearance_settings.border_style, "dashed");
+assert.equal(publicBorder.appearance_settings.title_color, "#042751");
+assert.equal(publicBorder.appearance_settings.paragraph_color, "#52647b");
 assert.equal(publicBorder.appearance_settings.background_style, "abstract");
 assert.equal(publicBorder.appearance_settings.page_background, "#042751");
 assert.equal(publicBorder.appearance_settings.border_color, "#042751");
