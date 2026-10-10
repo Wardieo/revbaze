@@ -30,9 +30,7 @@ export function BrandLogo({
           />
         </>
       )}
-      <span>
-        revbaze<span className="revbaze-brand-dot">.</span>
-      </span>
+      <span>revbaze</span>
     </span>
   );
 }
