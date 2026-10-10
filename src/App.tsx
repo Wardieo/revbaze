@@ -1,3 +1,4 @@
+import { NotFoundPage } from "./components/shared/NotFoundPage";
 import { AcceptInvitation } from "./features/auth/AcceptInvitation";
 import { pageTitle } from "./lib/pageTitle";
 import { queryClient as client } from "./lib/queryClient";
@@ -630,15 +631,7 @@ function Workspace() {
                 />
                 <Route
                   path="*"
-                  element={
-                    <section className="card error-state">
-                      <h2>That page has moved</h2>
-                      <p>Revbaze is now your review link workspace.</p>
-                      <Button asChild>
-                        <Link to="/">Back to overview</Link>
-                      </Button>
-                    </section>
-                  }
+                  element={<NotFoundPage />}
                 />
               </Routes>
             </Suspense>
@@ -678,6 +671,8 @@ export default function App() {
     !window.location.hash.startsWith("#/") &&
     (marketingPaths.includes(window.location.pathname) ||
       window.location.pathname.startsWith("/resources/"));
+  const knownAppPaths = ["/login", "/signup", "/check-email", "/forgot-password", "/reset-password", "/auth/callback", "/accept-invitation", "/overview", "/cards", "/analytics", "/platforms", "/qr-codes", "/integrations", "/settings", "/onboarding", "/upgrade", "/checkout", "/start-plan", "/review"];
+  if (!authCallback.active && !window.location.hash.startsWith("#/") && !publicMarketing && !knownAppPaths.some(path => window.location.pathname === path || window.location.pathname.startsWith(path + "/"))) return <NotFoundPage />;
   if (publicMarketing)
     return (
       <BrowserRouter>

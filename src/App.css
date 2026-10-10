@@ -3604,3 +3604,73 @@ input[type="color"] {
   align-items: center;
   justify-content: center;
 }
+
+.not-found-page { min-height:100dvh; background:#ffffff; color:#042751; display:flex; flex-direction:column; padding:32px; }
+.not-found-brand { align-self:flex-start; color:#042751; text-decoration:none; font-size:26px; }
+.not-found-content { margin:auto; max-width:520px; width:100%; text-align:center; padding:24px 0 48px; }
+.not-found-content img { width:100%; max-width:480px; height:auto; }
+.not-found-code { display:block; font-size:12px; font-weight:600; letter-spacing:2px; }
+.not-found-content h1 { font-size:clamp(32px,6vw,48px); letter-spacing:-1.5px; margin:18px 0 12px; }
+.not-found-content p { color:#52647b; font-size:16px; line-height:1.7; margin:0 auto; max-width:390px; }
+.not-found-actions { display:flex; justify-content:center; flex-wrap:wrap; gap:12px; margin-top:28px; }
+.not-found-actions .button { min-height:44px; padding:12px 20px; font-size:14px; text-decoration:none; }
+.not-found-actions .primary { background:#042751; color:white; }
+
+/* Wormhole animation — MIT licensed, 404.colorion.co. */
+.wp-404 {
+  --wp-ink: #0f191e;
+  --wp-accent: #38bdf8;
+  --wp-shell: #ffffff;
+  display: grid;
+  justify-items: center;
+  font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+  margin-bottom: 32px;
+}
+.wp-stage {
+  position: relative;
+  width: min(360px, 100%);
+  aspect-ratio: 15 / 11;
+  border-radius: 20px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--wp-accent) 20%, var(--wp-ink)), var(--wp-ink) 68%);
+}
+.wp-ring {
+  position: absolute;
+  width: 80%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid var(--wp-accent);
+  opacity: 0;
+  animation: wp-rush 3s linear infinite;
+  animation-delay: calc(var(--i) * -0.5s);
+}
+.wp-num {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(36px, 9vw, 48px);
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--wp-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--wp-accent) 60%, transparent);
+  animation: wp-flick 3s steps(1) infinite;
+}
+@keyframes wp-rush {
+  0% { transform: scale(0.05); opacity: 0; }
+  18% { opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+@keyframes wp-flick {
+  0%, 40%, 60%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wp-404 .wp-ring, .wp-404 .wp-num { animation: none; }
+  .wp-404 .wp-ring { opacity: 0.5; }
+  .wp-404 .wp-ring:nth-child(1) { transform: scale(0.35); }
+  .wp-404 .wp-ring:nth-child(2) { transform: scale(0.6); }
+  .wp-404 .wp-ring:nth-child(3) { transform: scale(0.9); }
+  .wp-404 .wp-ring:nth-child(4) { transform: scale(1.2); }
+  .wp-404 .wp-ring:nth-child(5), .wp-404 .wp-ring:nth-child(6) { opacity: 0; }
+}
