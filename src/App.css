@@ -3087,6 +3087,11 @@ input[type="color"] {
   font-weight: 600;
   margin-left: 4px;
 }
+.auth-next a {
+  color: #042751;
+  font-weight: 600;
+  text-decoration: none;
+}
 .auth-next {
   font-size: 12px;
   color: #8591a6;

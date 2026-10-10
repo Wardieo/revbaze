@@ -15,7 +15,7 @@ import "./feature-details.css";
 const answers = [
   [
     "Can I make the review card match my business?",
-    "Yes. Add your business logo, choose an accent color, and select a card layout. Keep your welcome message clear and your review destinations easy to find.",
+    "Yes. Add your business logo and welcome message, choose a layout, and customize accent color, card color, borders, buttons, and the background behind the card. Page backgrounds support plain color, gradients, dots, abstract rings, and waves.",
   ],
   [
     "Where do customers leave their reviews?",
@@ -32,6 +32,10 @@ const answers = [
   [
     "Can I manage more than one business?",
     "Free supports one business and one review card. Growth supports two businesses and five review cards. Pro supports unlimited businesses and review cards, with separate workspaces for each business.",
+  ],
+  [
+    "Can my team help manage a business?",
+    "Growth includes five invited members and Pro includes 20, shared across the owner’s businesses. Only owners invite or manage members. Admins can edit business settings, cards, and platforms; Editors can edit cards and platforms; Viewers have read-only dashboard access. Access can be limited to one business or all currently owned businesses.",
   ],
   [
     "Do integrations deliver events automatically?",

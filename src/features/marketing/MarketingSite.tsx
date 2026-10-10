@@ -347,35 +347,24 @@ function Home() {
               </span>
             </div>
           </Reveal>
-          <Reveal className="m-hero-visual">
-            <div className="m-hero-dashboard">
-              <DashboardPreview />
-            </div>
-            <div className="m-orbit m-orbit-one" />
-            <div className="m-orbit m-orbit-two" />
-            <div className="m-visual-tag">
-              <span />A little link. A lasting impression.
-            </div>
-            <div className="m-floating-card">
-              <ProductCard compact />
-            </div>
-            <div className="m-float-note">
-              <Link2 size={18} />
-              <div>
-                <strong>One invitation</strong>
-                <span>All your favorite destinations</span>
-              </div>
-              <ArrowUpRight size={16} />
-            </div>
-            <div className="m-float-qr">
-              <Suspense fallback={<QrCode size={70} />}>
-                <QRPreview url="https://example.com/review-card-demo" />
-              </Suspense>
-              <span>Make it a moment.</span>
-            </div>
-            <span className="m-visual-caption">
-              Interactive product preview · sample business
-            </span>
+          <Reveal className="m-hero-visual m-photo-hero">
+            <div className="m-photo-orbit" aria-hidden="true" />
+            <div className="m-photo-dots" aria-hidden="true" />
+            <figure className="m-hero-photo m-hero-photo-main">
+              <img src="/images/hero/feedback-counter.jpeg" alt="A feedback QR code displayed on a café counter" fetchPriority="high" />
+              <figcaption>At your counter. Ready for feedback.</figcaption>
+            </figure>
+            <figure className="m-hero-photo m-hero-photo-customer">
+              <img src="/images/hero/customer-scan.jpeg" alt="A customer scanning a countertop QR code with her phone" />
+            </figure>
+            <figure className="m-hero-photo m-hero-photo-shop">
+              <img src="/images/hero/shop-scan.jpeg" alt="A shopper using a QR code at a small business" />
+            </figure>
+            <figure className="m-hero-photo m-hero-photo-reception">
+              <img src="/images/hero/reception-scan.jpeg" alt="A guest scanning a QR code at reception" />
+            </figure>
+            <div className="m-photo-invitation"><QrCode size={20} /><div><strong>Scan. Choose. Share.</strong><span>A little invitation, wherever you meet.</span></div></div>
+            <span className="m-photo-caption">Inspiration for displaying your review QR code</span>
           </Reveal>
         </div>
         <div className="m-platform-strip">
@@ -656,8 +645,8 @@ function Showcase() {
           <DashboardPreview />
         </Reveal>
         <p className="m-preview-disclaimer">
-          Actual Revbaze styling with interactive sample activity. Analytics
-          currently uses mock data.
+          Interactive sample activity for illustration. Your workspace analytics
+          show recorded visits and outbound clicks from your published review pages.
         </p>
       </div>
     </section>
@@ -862,30 +851,14 @@ function PricingSection() {
   );
 }
 const questions = [
-  [
-    "What does Revbaze do?",
-    "Revbaze helps businesses create a branded review card that brings official review links together. Share it as one link or a customized QR code.",
-  ],
-  [
-    "Can I use my business branding?",
-    "Yes. Add your business logo, choose an accent color, and pick a card layout. QR codes have their own style, color, and logo controls.",
-  ],
-  [
-    "Does Revbaze collect reviews from every platform?",
-    "No. Review cards send customers to your chosen external review destinations. An outbound click does not prove a review was completed, and live review aggregation is not connected.",
-  ],
-  [
-    "Are analytics and integrations live?",
-    "Analytics and integrations currently use labeled mock data. Review platform management lets you organize destination links without signing in to those platforms.",
-  ],
-  [
-    "Can I manage more than one business?",
-    "Yes. Create a separate business workspace through onboarding and switch between your businesses from the workspace dropdown.",
-  ],
-  [
-    "Will I be charged when I sign up?",
-    "Billing is not enabled. The pricing shown here is proposed preview content, and signing up does not trigger a payment.",
-  ],
+  ["What does Revbaze do?", "Revbaze brings your review destinations into one branded page. Share its link online or download a QR code for customers to scan at your business. Customers choose a platform and leave their review there."],
+  ["Can I customize my review page?", "Yes. Choose a layout, add a logo and welcome message, and customize card colors, borders, buttons, and the full-page background. Background options include plain color, gradients, dots, abstract rings, and waves. Growth and Pro also include QR styling, colors, and logos."],
+  ["Can I start for free?", "Yes. Choose Free on Pricing, create your account, and confirm your email. Free includes one owned business, one review card, one enabled platform link per card, and a basic QR code. Growth and Pro require paid checkout; there is no free trial."],
+  ["What can I see in analytics?", "Overview shows recorded review-page visits and outbound link clicks. Growth and Pro add detailed analytics, filters, comparisons, and CSV exports, with 12 months of history on Growth and 24 on Pro. The public website’s sample dashboard is a demonstration, separate from your business data."],
+  ["Does Revbaze collect reviews from other platforms?", "Revbaze directs customers to your chosen external review destinations. It does not aggregate their reviews or ratings. An outbound click indicates a customer opened a review link; it does not verify that they submitted a review."],
+  ["Can I manage multiple businesses and invite my team?", "Growth includes two owned businesses, five review cards, and five invited members across your account. Pro includes unlimited owned businesses and review cards, plus 20 invited members. Owners can invite a new email address with Admin, Editor, or Viewer access to a selected business or all currently owned businesses. The member seats are shared across businesses; invited members use the owner’s workspace plan."],
+  ["Do integrations send activity automatically?", "Growth and Pro can save integration and webhook configurations. Automatic event delivery, provider authorization, and test requests are not enabled yet. Saving a setup does not activate an automation."],
+  ["Do customers need a Revbaze account?", "No. Customers can open a published review page or scan its QR code without signing in to Revbaze. The external review platform may require its own account before they can leave a review."],
 ];
 function FAQ() {
   return (
@@ -1348,19 +1321,21 @@ function PricingPage() {
           {[
             [
               "Can I start for free?",
-              "Yes. Start with a free account and set up your first business and review card. Free allows one owned business, one review card, and three enabled platform links per card.",
+              "Yes. Start with a free account and set up your first business and review card. Free allows one owned business, one review card, and one enabled platform link per card.",
             ],
             [
               "Will choosing Growth or Pro charge me?",
-              "Growth and Pro require payment at checkout before paid-plan access begins. Subscriptions renew monthly until cancelled. Free does not require checkout.",
+              "After signup and email confirmation, Growth and Pro require paid Stripe checkout before paid-plan access begins. There is no free trial. Subscriptions renew monthly until cancelled. Free does not require checkout.",
             ],
+            ["Are team seats shared across businesses?", "Yes. Growth includes five invited members and Pro includes 20 across the owner’s businesses, excluding the owner. Pending invitations reserve a seat. A member with access to multiple businesses counts once. All-business invitations cover the businesses owned when the invitation is sent."],
+            ["Can I cancel or request a refund?", "Owners can manage subscriptions through Settings → Plans & billing and Stripe’s billing portal. To request a refund of your first subscription charge, contact us within seven days of that charge. Renewals are excluded from this offer. Requests are reviewed manually; cancellation does not automatically issue a refund."],
             [
               "Is yearly billing available?",
               "Yearly pricing has not been configured. All prices shown are monthly, in US dollars.",
             ],
             [
               "What does unlimited mean?",
-              "Unlimited businesses, cards, and platform links are subject to fair-use limits. Final terms will be published before subscriptions launch.",
+              "Pro has no plan quota on owned businesses or review cards. Growth and Pro have no plan quota on enabled platform links per card. Technical validation and acceptable-use rules still apply; “unlimited” does not include unlimited team seats.",
             ],
           ].map(([question, answer]) => (
             <details key={question}>

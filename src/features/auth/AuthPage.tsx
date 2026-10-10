@@ -240,6 +240,9 @@ export function AuthPage({
                 },
               });
               if (error) throw error;
+              if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+                throw { code: "user_already_exists" };
+              }
               signupSucceeded.current = true;
               if (data.session) navigate("/overview", { replace: true });
               else {
@@ -332,9 +335,10 @@ export function AuthPage({
       </form>
       {signup && (
         <p className="auth-next">
-          {selectedPlan === "free"
-            ? "Next: confirm your email, then set up your business and first review card."
-            : "Next: confirm your email, complete paid checkout, then set up your business."}
+          By creating an account, you agree to our{" "}
+          <a href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>{" "}
+          and acknowledge our{" "}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
         </p>
       )}
       <p className="auth-switch">

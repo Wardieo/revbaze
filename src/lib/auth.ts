@@ -10,6 +10,8 @@ export function authErrorMessage(error: unknown): string {
       : typeof value.message === "string"
         ? value.message
         : "";
+  if (code === "user_already_exists" || code === "email_exists" || /already (registered|exists)/i.test(raw))
+    return "An account with this email already exists. Sign in instead, or reset your password if you’ve forgotten it.";
   if (code === "email_not_confirmed" || /email not confirmed/i.test(raw))
     return "Confirm your email before signing in. You can request another confirmation link below.";
   if (code === "over_email_send_rate_limit" || /rate limit/i.test(raw))

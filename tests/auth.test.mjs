@@ -26,6 +26,9 @@ try {
   );
   const { authErrorMessage, confirmationRedirect, callbackDetails } =
     await import(pathToFileURL(join(dir, "auth.mjs")));
+  for (const error of [{ code: "user_already_exists" }, { code: "email_exists" }, { message: "User already registered" }]) {
+    assert.match(authErrorMessage(error), /account with this email already exists/i);
+  }
   for (const err of [null, {}, new Error("{}"), { message: "[object Object]" }])
     assert.match(authErrorMessage(err), /unexpected response/);
   assert.match(
