@@ -1,3 +1,4 @@
+import { billingErrorMessage } from "../lib/billingErrors";
 import { supabase } from "../lib/supabase";
 export type PaymentSetup = {
   purpose?: "subscription" | "payment-method";
@@ -23,17 +24,7 @@ export async function billingAction(
       returnTo: returnTo || window.location.hash.slice(1) || "/upgrade",
     },
   });
-  if (error) {
-    let message = "Billing is unavailable. Please try again.";
-    if (error.context instanceof Response) {
-      try {
-        message = (await error.context.json()).error || message;
-      } catch {
-        /* use fallback */
-      }
-    }
-    throw new Error(message);
-  }
+  if (error) throw new Error(await billingErrorMessage(error));
   if (data?.error) throw new Error(data.error);
   return data as {
     payment?: PaymentSetup;

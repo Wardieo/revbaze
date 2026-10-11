@@ -52,11 +52,73 @@ export async function paymongo(
     body: attributes ? JSON.stringify({ data: { attributes } }) : undefined,
     signal: AbortSignal.timeout(15000),
   });
-  const value = await res.json();
-  if (!res.ok) {
-    console.error("PayMongo request failed", res.status);
+  let value;
+  try {
+    value = await res.json();
+  } catch {
     throw new Error(
-      "PayMongo could not complete the request. Please try again or contact support.",
+      `PayMongo returned an unreadable response (HTTP ${res.status}). Please try again or contact support.`,
+    );
+  }
+  if (!res.ok) {
+    // Log codes/field names only, never API keys, request bodies or provider detail text.
+    const codes = Array.isArray(value.errors)
+      ? value.errors.map((e: { code?: unknown }) =>
+          typeof e.code === "string" && /^[a-z_]+$/.test(e.code)
+            ? e.code
+            : "unknown",
+        )
+      : [];
+    const knownFields = new Set([
+      "data",
+      "attributes",
+      "first_name",
+      "last_name",
+      "email",
+      "phone",
+      "default_device",
+      "interval",
+      "interval_count",
+      "amount",
+      "currency",
+      "name",
+      "customer_id",
+      "plan_id",
+      "payment_method_id",
+    ]);
+    const fields = Array.isArray(value.errors)
+      ? value.errors.flatMap(
+          (e: { source?: { attribute?: unknown; pointer?: unknown } }) => {
+            const pointer = e.source?.attribute || e.source?.pointer;
+            return typeof pointer === "string"
+              ? pointer.split(/[/.]/).filter((field) => knownFields.has(field))
+              : [];
+          },
+        )
+      : [];
+    const operation = `${method} ${path.startsWith("subscriptions/plans") ? "subscriptions/plans" : path.split(/[/?]/)[0]}`;
+    const fieldNames = [...new Set(fields)].join(",");
+    console.error(
+      "PayMongo request failed",
+      res.status,
+      codes.join(","),
+      operation,
+      fieldNames ? `fields=${fieldNames}` : "fields=unspecified",
+    );
+    if (res.status === 401)
+      throw new Error(
+        "PayMongo rejected the API key. Check PAYMONGO_SECRET_KEY in Supabase Edge Function secrets.",
+      );
+    if (res.status === 403)
+      throw new Error(
+        "PayMongo denied billing access. Confirm Subscriptions is enabled on your merchant account and your API keys have access.",
+      );
+    if (res.status === 404)
+      throw new Error(
+        "PayMongo could not find the billing resource. Confirm Subscriptions is enabled on your merchant account.",
+      );
+    throw new Error(
+      `PayMongo rejected ${operation} (HTTP ${res.status})${fieldNames ? `: check ${fieldNames}` : ""}. Check the billing function logs for the provider error code.`,
     );
   }
   return value;
@@ -137,7 +199,7 @@ export async function resolvePlan(name: "growth" | "pro") {
       name: `Revbaze ${name} USD ${usd / 100} (${day})`,
       amount: quote.php_amount,
       currency: "PHP",
-      interval: "month",
+      interval: "monthly",
       interval_count: 1,
     })
   ).data;
@@ -248,7 +310,7 @@ export function response(data: unknown, status = 200, origin?: string) {
             "Access-Control-Allow-Origin": origin,
             Vary: "Origin",
             "Access-Control-Allow-Headers":
-              "authorization, apikey, content-type, x-client-info",
+              "authorization, apikey, content-type, x-client-info, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
           }
         : {}),

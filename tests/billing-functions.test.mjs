@@ -324,3 +324,167 @@ assert.equal(result.status, 200);
 assert.equal(prior.plan, "growth", "cancellation preserves the paid period");
 assert.equal((await billing(request("status"))).status, 200);
 assert.equal(prior.plan, "growth");
+
+const { billingErrorMessage } = await import(
+  uri(await readFile("src/lib/billingErrors.ts", "utf8"))
+);
+assert.equal(
+  await billingErrorMessage({
+    context: new Response(JSON.stringify({ message: "Invalid JWT" }), {
+      status: 401,
+    }),
+  }),
+  "Invalid JWT",
+);
+assert.equal(
+  await billingErrorMessage({
+    context: new Response(
+      JSON.stringify({
+        error: "Billing setup is incomplete: PAYMONGO_SECRET_KEY",
+      }),
+      { status: 503 },
+    ),
+  }),
+  "Billing setup is incomplete: PAYMONGO_SECRET_KEY",
+);
+assert.match(
+  await billingErrorMessage({ context: new Response("", { status: 404 }) }),
+  /not deployed/,
+);
+assert.match(
+  await billingErrorMessage({ name: "FunctionsFetchError" }),
+  /APP_URL/,
+);
+assert.match(
+  await billingErrorMessage({
+    context: new Response("Bad gateway", { status: 502 }),
+  }),
+  /HTTP 502/,
+);
+console.log(
+  "PASS: checkout preserves function/gateway errors and identifies network/deployment failures.",
+);
+
+const preflight = await billing(
+  new Request("https://db.example.com/functions/v1/billing", {
+    method: "OPTIONS",
+    headers: {
+      origin: "https://preview.example.com",
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers":
+        "authorization,apikey,content-type,x-client-info",
+    },
+  }),
+);
+assert.equal(preflight.status, 200);
+assert.equal(
+  preflight.headers.get("access-control-allow-origin"),
+  "https://preview.example.com",
+);
+const rejected = await billing(
+  request("checkout", "valid", "https://preview.example.com"),
+);
+assert.equal(rejected.status, 403);
+assert.equal(
+  rejected.headers.get("access-control-allow-origin"),
+  "https://preview.example.com",
+);
+assert.match((await rejected.json()).error, /APP_URL/);
+env.BILLING_ALLOWED_ORIGINS = "https://preview.example.com";
+assert.equal(
+  (await billing(request("status", "valid", "https://preview.example.com")))
+    .status,
+  200,
+);
+delete env.BILLING_ALLOWED_ORIGINS;
+console.log(
+  "PASS: preflight succeeds, unauthorized origins receive readable errors, and explicit extra origins are accepted.",
+);
+
+const originalFetch = globalThis.fetch,
+  originalAuth = db.auth.getUser;
+db.auth.getUser = async () => ({
+  data: {
+    user: {
+      id: "owner",
+      email: "owner@example.com",
+      user_metadata: { name: "Edward Mosquera" },
+    },
+  },
+});
+row.paymongo_customer_id = null;
+items = [];
+globalThis.fetch = async (url, options) => {
+  if (url.endsWith("/customers")) {
+    const attrs = JSON.parse(options.body).data.attributes;
+    assert.equal(attrs.first_name, "Edward");
+    assert.equal(attrs.last_name, "Mosquera");
+    return new Response(JSON.stringify({ data: { id: "cus_owner" } }), {
+      status: 200,
+    });
+  }
+  return originalFetch(url, options);
+};
+assert.equal((await billing(request("checkout"))).status, 200);
+db.auth.getUser = originalAuth;
+const runtimeExports = await import(runtime),
+  oldRPC = db.rpc,
+  oldFrom = db.from;
+db.rpc = async (name, args) =>
+  name === "billing_quote_claim"
+    ? { data: { token: "quote-token", php_amount: 57000 } }
+    : oldRPC(name, args);
+db.from = (table) => {
+  if (table !== "billing_quotes") return oldFrom(table);
+  const q = {
+    update: () => q,
+    eq: () => q,
+    select: () => q,
+    single: async () => ({
+      data: { provider_plan_id: "plan_generated" },
+      error: null,
+    }),
+  };
+  return q;
+};
+globalThis.fetch = async (url, options) => {
+  assert(url.endsWith("/subscriptions/plans"));
+  const attrs = JSON.parse(options.body).data.attributes;
+  assert.equal(attrs.interval, "monthly");
+  assert.equal(attrs.interval_count, 1);
+  assert.equal(attrs.currency, "PHP");
+  assert.equal(attrs.amount, 57000);
+  return new Response(JSON.stringify({ data: { id: "plan_generated" } }), {
+    status: 200,
+  });
+};
+assert.equal(await runtimeExports.resolvePlan("growth"), "plan_generated");
+db.rpc = oldRPC;
+db.from = oldFrom;
+const logs = [],
+  originalConsole = console.error;
+console.error = (...args) => logs.push(args);
+globalThis.fetch = async () =>
+  new Response(
+    JSON.stringify({
+      errors: [
+        {
+          code: "invalid_request_body",
+          source: { attribute: "last_name" },
+          detail: "DO_NOT_LOG_CUSTOMER_VALUE",
+        },
+      ],
+    }),
+    { status: 400 },
+  );
+await assert.rejects(
+  runtimeExports.paymongo("customers", {}),
+  /POST customers.*last_name/,
+);
+assert(!JSON.stringify(logs).includes("DO_NOT_LOG_CUSTOMER_VALUE"));
+assert(JSON.stringify(logs).includes("fields=last_name"));
+console.error = originalConsole;
+globalThis.fetch = originalFetch;
+console.log(
+  "PASS: customer first/last names, PayMongo monthly plan enum, and safe operation/field validation diagnostics.",
+);

@@ -18,13 +18,32 @@ Deno.serve(async (request: Request) => {
     user: string | undefined,
     token: string | undefined;
   try {
-    origin = appURL();
+    // Preflight carries no payment or authorization data. Let the browser reach
+    // the POST so origin/configuration failures can be read instead of hidden by CORS.
+    const callerOrigin = request.headers.get("origin") || undefined;
+    if (request.method === "OPTIONS") return response({}, 200, callerOrigin);
+    origin = callerOrigin || appURL();
+    const configuredOrigin = appURL();
+    const allowedOrigins = [
+      configuredOrigin,
+      ...(Deno.env.get("BILLING_ALLOWED_ORIGINS") || "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ];
     if (
       request.headers.get("origin") &&
-      request.headers.get("origin") !== origin
+      !allowedOrigins.includes(request.headers.get("origin")!)
     )
-      return response({ error: "Origin is not allowed" }, 403);
-    if (request.method === "OPTIONS") return response({}, 200, origin);
+      return response(
+        {
+          error:
+            "Checkout is not allowed from this website. Set APP_URL to the website origin or add it to BILLING_ALLOWED_ORIGINS in Supabase Edge Function secrets.",
+        },
+        403,
+        origin,
+      );
+
     if (request.method !== "POST")
       return response({ error: "Method not allowed" }, 405, origin);
     db = database();
@@ -71,9 +90,19 @@ Deno.serve(async (request: Request) => {
     if (!row.paymongo_customer_id) {
       if (input.action !== "checkout")
         throw new Error("Choose a paid plan first");
+      const fullName = String(
+        data.user.user_metadata?.name ||
+          data.user.user_metadata?.full_name ||
+          "Revbaze customer",
+      )
+        .trim()
+        .split(/\s+/);
       const created = (
         await paymongo("customers", {
-          first_name: data.user.user_metadata?.name || "Revbaze customer",
+          first_name: data.user.user_metadata?.first_name || fullName[0],
+          last_name:
+            data.user.user_metadata?.last_name || fullName.slice(1).join(" "),
+          ...(data.user.phone ? { phone: data.user.phone } : {}),
           email: data.user.email,
         })
       ).data;
