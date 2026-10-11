@@ -11,102 +11,71 @@ const source = ts.transpileModule(
     },
   },
 ).outputText;
-const { validPrice, entitlement, verifySignature, checkoutReturnPath } =
+const { entitlement, validPlan, verifySignature, checkoutReturnPath } =
   await import(
     "data:text/javascript;base64," + Buffer.from(source).toString("base64")
   );
-const config = { growth: "prod_growth", pro: "prod_pro" };
-const price = {
-  id: "price_growth",
-  product: "prod_growth",
-  active: true,
-  currency: "usd",
-  unit_amount: 1000,
-  recurring: { interval: "month", interval_count: 1 },
+const config = {
+  growth: "plan_growth",
+  pro: "plan_pro",
+  growthAmount: 57000,
+  proAmount: 165300,
+  currency: "PHP",
+  live: false,
 };
 const future = Math.floor(Date.now() / 1000) + 86400;
-const subscription = {
-  latest_invoice: { status: "paid" },
-  id: "sub_one",
-  status: "active",
-  cancel_at_period_end: false,
-  items: { data: [{ quantity: 1, current_period_end: future, price }] },
+const plan = {
+  id: config.growth,
+  amount: 57000,
+  currency: "PHP",
+  interval: "month",
+  interval_count: 1,
 };
-assert(validPrice(price, "growth", config.growth));
-assert(!validPrice({ ...price, unit_amount: 999 }, "growth", config.growth));
-assert(
-  !validPrice(
-    { ...price, recurring: { interval: "year", interval_count: 1 } },
-    "growth",
-    config.growth,
-  ),
-);
-assert(!validPrice({ ...price, currency: "eur" }, "growth", config.growth));
+const subscription = {
+  id: "subs_one",
+  attributes: {
+    livemode: false,
+    status: "active",
+    plan,
+    latest_invoice: { amount: 57000, currency: "PHP", status: "paid" },
+    next_billing_schedule: new Date(future * 1000).toISOString(),
+  },
+};
+assert(validPlan(plan, "growth", config));
+assert(!validPlan({ ...plan, amount: 1000 }, "growth", config));
 assert.equal(entitlement([subscription], config).plan, "growth");
-const trial = { ...subscription, status: "trialing", latest_invoice: null };
-assert.equal(entitlement([trial], config).plan, "growth", "Verified trials grant access before the first charge");
-assert.equal(entitlement([trial], config, (future + 1) * 1000).plan, "free", "Expired trials do not grant access");
-assert.equal(checkoutReturnPath("/start-plan?cancelled=1"), "/start-plan?cancelled=1");
-assert.equal(
-  entitlement([{ ...subscription, latest_invoice: { status: "open" } }], config)
-    .plan,
-  "free",
-);
-assert.equal(
-  entitlement([{ ...subscription, latest_invoice: null }], config).plan,
-  "free",
-);
-assert.equal(
-  entitlement([{ ...subscription, status: "past_due" }], config).plan,
-  "free",
-);
-assert.equal(
-  entitlement([{ ...subscription, status: "canceled" }], config).plan,
-  "free",
-);
-assert.equal(
-  entitlement([{ ...subscription, cancel_at_period_end: true }], config).plan,
-  "growth",
-);
+for (const patch of [
+  { status: "incomplete" },
+  { status: "past_due" },
+  { livemode: true },
+  { latest_invoice: { status: "open" } },
+  { latest_invoice: { amount: 1000, currency: "PHP", status: "paid" } },
+  { next_billing_schedule: "invalid" },
+])
+  assert.equal(
+    entitlement(
+      [
+        {
+          ...subscription,
+          attributes: { ...subscription.attributes, ...patch },
+        },
+      ],
+      config,
+    ).plan,
+    "free",
+  );
 assert.equal(
   entitlement([subscription], config, (future + 1) * 1000).plan,
   "free",
 );
+assert.equal(checkoutReturnPath("https://evil.example"), "/upgrade");
 assert.equal(
-  entitlement(
-    [
-      {
-        ...subscription,
-        items: { data: [{ quantity: 2, current_period_end: future, price }] },
-      },
-    ],
-    config,
-  ).plan,
-  "free",
+  checkoutReturnPath("/start-plan?cancelled=1"),
+  "/start-plan?cancelled=1",
 );
-assert.equal(
-  entitlement(
-    [
-      {
-        ...subscription,
-        items: {
-          data: [
-            {
-              quantity: 1,
-              current_period_end: future,
-              price: { ...price, product: "prod_pro", unit_amount: 2900 },
-            },
-          ],
-        },
-      },
-    ],
-    config,
-  ).plan,
-  "pro",
-);
-const secret = "webhook-test-secret";
-const payload = JSON.stringify({ id: "evt_test" });
-const timestamp = Math.floor(Date.now() / 1000);
+const payload = '{"data":{"id":"evt_one"}}',
+  secret = "test-webhook-secret",
+  timestamp = Math.floor(Date.now() / 1000);
 const key = await crypto.subtle.importKey(
   "raw",
   new TextEncoder().encode(secret),
@@ -121,20 +90,19 @@ const signature = Buffer.from(
     new TextEncoder().encode(`${timestamp}.${payload}`),
   ),
 ).toString("hex");
-await verifySignature(payload, `t=${timestamp},v1=${signature}`, secret);
-await verifySignature(
-  payload,
-  `t=${timestamp},v1=${"0".repeat(64)},v1=${signature}`,
-  secret,
+await verifySignature(payload, `t=${timestamp},te=${signature},li=`, secret);
+await assert.rejects(
+  verifySignature(payload + " ", `t=${timestamp},te=${signature}`, secret),
 );
 await assert.rejects(
-  verifySignature(payload + " ", `t=${timestamp},v1=${signature}`, secret),
+  verifySignature(payload, `t=${timestamp},te=${signature}`, secret, true),
 );
 await assert.rejects(
   verifySignature(
     payload,
-    `t=${timestamp},v1=${signature}`,
+    `t=${timestamp},te=${signature}`,
     secret,
+    false,
     (timestamp + 301) * 1000,
   ),
 );
@@ -148,6 +116,7 @@ for (const file of [
   "202610080003_onboarding_templates_assets.sql",
   "202610090004_plan_access.sql",
   "202610090005_stripe_billing.sql",
+  "202610110032_paymongo_billing.sql",
 ])
   await db.exec(await readFile("supabase/migrations/" + file, "utf8"));
 const user = "00000000-0000-4000-8000-000000000001";
@@ -157,7 +126,7 @@ await assert.rejects(db.query("select * from public.billing_customers"));
 await assert.rejects(db.query("select public.billing_claim($1,null)", [user]));
 await db.exec("reset role");
 await db.query(
-  "insert into public.billing_customers(user_id,stripe_customer_id) values($1,$2)",
+  "insert into public.billing_customers(user_id,paymongo_customer_id) values($1,$2)",
   [user, "cus_test"],
 );
 await db.exec("set role service_role");
@@ -249,6 +218,33 @@ assert.equal(
     .rows[0].checkout_session_id,
   "cs_test",
 );
+const day = new Date().toISOString().slice(0, 10);
+const quoteArgs = [day, false, "growth", 1000, 57000, 57];
+const q1 = await rpc("billing_quote_claim", quoteArgs);
+assert(q1.token);
+assert((await rpc("billing_quote_claim", quoteArgs)).busy);
+await db.query(
+  "update public.billing_quotes set provider_plan_id='plan_test',lease_token=null,lease_until=null where day=$1 and livemode=false",
+  [day],
+);
+assert.equal(
+  (await rpc("billing_quote_claim", quoteArgs)).provider_plan_id,
+  "plan_test",
+);
+assert(
+  (await rpc("billing_quote_claim", [day, true, "growth", 1000, 57000, 57]))
+    .token,
+  "live quote must not reuse test plan",
+);
+await db.exec("reset role; set role authenticated");
+await assert.rejects(db.query("select * from public.billing_quotes"));
+await assert.rejects(
+  db.query(
+    "select public.billing_quote_claim($1,false,'growth',1000,57000,57)",
+    [day],
+  ),
+);
+await db.exec("reset role");
 await db.close();
 console.log(
   "Billing tests passed: monthly pricing, signed raw-body verification, subscription lifecycle, server permissions, leases, atomic entitlements, duplicate events.",

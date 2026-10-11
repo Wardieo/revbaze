@@ -35,7 +35,13 @@ import { useLiveWorkspace } from "./hooks/useLiveWorkspace";
 import { useSession } from "./hooks/useSession";
 import { loadWorkspace } from "./services/workspace";
 import { emptyWorkspace } from "./types/workspace";
-import { supabase, authBootstrap, authCallback, signOutFully, isPasswordRecoverySession } from "./lib/supabase";
+import {
+  supabase,
+  authBootstrap,
+  authCallback,
+  signOutFully,
+  isPasswordRecoverySession,
+} from "./lib/supabase";
 import { loadOnboardingStatus } from "./services/onboarding";
 import { PublicReviewPage } from "./features/public-review/PublicReviewPage";
 import { OverviewPage } from "./features/overview/OverviewPage";
@@ -44,6 +50,7 @@ import { PlatformsPage } from "./features/review-platforms/PlatformsPage";
 import { IntegrationsPage } from "./features/integrations/IntegrationsPage";
 import { SignupCheckout } from "./features/billing/SignupCheckout";
 import { usePlan } from "./hooks/usePlan";
+import { PayMongoPayment } from "./features/billing/PayMongoPayment";
 import { CheckoutReturn } from "./features/billing/CheckoutReturn";
 import { PlanChooser } from "./features/billing/PlanChooser";
 import { SettingsPage } from "./features/settings/SettingsPage";
@@ -153,10 +160,26 @@ function Workspace() {
       rememberBusiness(session.user.id, activeBusiness);
     }
   }, [session?.user.id, activeBusiness]);
-  const titleBusiness = status.data?.businesses.find(b => b.id === activeBusiness)?.name || business?.name;
+  const titleBusiness =
+    status.data?.businesses.find((b) => b.id === activeBusiness)?.name ||
+    business?.name;
   useEffect(() => {
-    const dashboardRoute = ["/overview", "/cards", "/analytics", "/platforms", "/qr-codes", "/integrations"].some(path => location.pathname === path || location.pathname.startsWith(path + "/"));
-    document.title = dashboardRoute ? titleBusiness ? `Dashboard – ${titleBusiness}` : "Dashboard – Revbaze" : pageTitle(location.pathname);
+    const dashboardRoute = [
+      "/overview",
+      "/cards",
+      "/analytics",
+      "/platforms",
+      "/qr-codes",
+      "/integrations",
+    ].some(
+      (path) =>
+        location.pathname === path || location.pathname.startsWith(path + "/"),
+    );
+    document.title = dashboardRoute
+      ? titleBusiness
+        ? `Dashboard – ${titleBusiness}`
+        : "Dashboard – Revbaze"
+      : pageTitle(location.pathname);
   }, [location.pathname, titleBusiness]);
   useLiveWorkspace(session?.user.id, activeBusiness);
   async function switchBusiness(id: string) {
@@ -291,7 +314,11 @@ function Workspace() {
   if (!isAuth && !ready)
     return (
       <div className={`app ${dark ? "dark" : ""}`}>
-        <main className="dashboard-session-loading" aria-label="Loading dashboard" aria-busy="true">
+        <main
+          className="dashboard-session-loading"
+          aria-label="Loading dashboard"
+          aria-busy="true"
+        >
           <Skeleton />
         </main>
       </div>
@@ -314,7 +341,10 @@ function Workspace() {
               path="/signup"
               element={<AuthPage key="signup" signup session={session} />}
             />
-            <Route path="/accept-invitation" element={<AcceptInvitation session={session} />} />
+            <Route
+              path="/accept-invitation"
+              element={<AcceptInvitation session={session} />}
+            />
             <Route path="/check-email" element={<CheckEmailPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route
@@ -337,10 +367,12 @@ function Workspace() {
         <SignupCheckout />
       </div>
     );
-  if (location.pathname === "/upgrade" || location.pathname === "/checkout") {
+  if (["/upgrade", "/pay", "/checkout"].includes(location.pathname)) {
     return (
       <div className={`app settings-shell ${dark ? "dark" : ""}`}>
-        {location.pathname === "/checkout" ? (
+        {location.pathname === "/pay" ? (
+          <PayMongoPayment />
+        ) : location.pathname === "/checkout" ? (
           <CheckoutReturn />
         ) : (
           <PlanChooser />
@@ -368,9 +400,7 @@ function Workspace() {
               migration in Supabase, then retry.
             </p>
             <Button onClick={() => void status.refetch()}>Try again</Button>
-            <Button onClick={() => void signOutFully()}>
-              Sign out
-            </Button>
+            <Button onClick={() => void signOutFully()}>Sign out</Button>
           </section>
         </div>
       );
@@ -630,10 +660,7 @@ function Workspace() {
                     </section>
                   }
                 />
-                <Route
-                  path="*"
-                  element={<NotFoundPage />}
-                />
+                <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
           )}
@@ -672,8 +699,39 @@ export default function App() {
     !window.location.hash.startsWith("#/") &&
     (marketingPaths.includes(window.location.pathname) ||
       window.location.pathname.startsWith("/resources/"));
-  const knownAppPaths = ["/login", "/signup", "/check-email", "/forgot-password", "/reset-password", "/auth/callback", "/accept-invitation", "/overview", "/cards", "/analytics", "/platforms", "/qr-codes", "/integrations", "/settings", "/onboarding", "/upgrade", "/checkout", "/start-plan", "/review"];
-  if (!authCallback.active && !window.location.hash.startsWith("#/") && !publicMarketing && !knownAppPaths.some(path => window.location.pathname === path || window.location.pathname.startsWith(path + "/"))) return <NotFoundPage />;
+  const knownAppPaths = [
+    "/login",
+    "/signup",
+    "/check-email",
+    "/forgot-password",
+    "/reset-password",
+    "/auth/callback",
+    "/accept-invitation",
+    "/overview",
+    "/cards",
+    "/analytics",
+    "/platforms",
+    "/qr-codes",
+    "/integrations",
+    "/settings",
+    "/onboarding",
+    "/upgrade",
+    "/pay",
+    "/checkout",
+    "/start-plan",
+    "/review",
+  ];
+  if (
+    !authCallback.active &&
+    !window.location.hash.startsWith("#/") &&
+    !publicMarketing &&
+    !knownAppPaths.some(
+      (path) =>
+        window.location.pathname === path ||
+        window.location.pathname.startsWith(path + "/"),
+    )
+  )
+    return <NotFoundPage />;
   if (publicMarketing)
     return (
       <BrowserRouter>

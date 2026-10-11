@@ -36,8 +36,9 @@ host.resolveModuleNames = (names, file) =>
 const program = ts.createProgram(
   [
     "supabase/functions/billing/index.ts",
+    "supabase/functions/billing-renewals/index.ts",
     "supabase/functions/review-events/index.ts",
-    "supabase/functions/stripe-webhook/index.ts",
+    "supabase/functions/paymongo-webhook/index.ts",
     "supabase/functions/image-upload/index.ts",
     "supabase/functions/asset-cleanup/index.ts",
     virtualFile,
@@ -60,421 +61,266 @@ const compile = (s) =>
   }).outputText;
 const uri = (s) =>
   "data:text/javascript;base64," + Buffer.from(compile(s)).toString("base64");
-const tracking = uri(
-  await readFile("supabase/functions/_shared/tracking.ts", "utf8"),
-);
 const core = uri(
   await readFile("supabase/functions/_shared/billing-core.ts", "utf8"),
+);
+const tracking = uri(
+  await readFile("supabase/functions/_shared/tracking.ts", "utf8"),
 );
 const env = {
   APP_URL: "https://app.example.com",
   SUPABASE_URL: "https://db.example.com",
-  SUPABASE_SERVICE_ROLE_KEY: "server-test",
-  STRIPE_SECRET_KEY: "sk_test_local_fixture",
-  STRIPE_WEBHOOK_SECRET: "local-webhook-secret",
-  STRIPE_GROWTH_PRICE_ID: "prod_growth",
-  STRIPE_PRO_PRICE_ID: "prod_pro",
+  SUPABASE_SERVICE_ROLE_KEY: "test",
+  PAYMONGO_SECRET_KEY: "sk_test_fixture",
+  PAYMONGO_PUBLIC_KEY: "pk_test_fixture",
+  PAYMONGO_WEBHOOK_SECRET: "fixture-secret",
 };
-let customer = null,
-  checkout = null,
+let prior = null;
+let row = { user_id: "owner", paymongo_customer_id: "cus_owner" },
   lease = null,
-  plan = "free",
   applied = 0,
-  stripeCalls = 0,
-  checkoutCreates = 0,
-  active = [];
-const user = { id: "owner-uuid", email: "owner@example.com" };
-const query = () => {
-  const q = {
-    select: () => q,
-    eq: () => q,
-    maybeSingle: async () => ({ data: customer, error: null }),
-    single: async () => ({ data: customer, error: null }),
-    upsert: async (row) => {
-      customer ??= row;
-      return { error: null };
-    },
-  };
-  return q;
-};
-globalThis.__createClient = () => ({
+  items = [],
+  quote = null,
+  apiCalls = 0;
+const processed = new Set();
+const db = {
   auth: {
-    getUser: async (token) =>
-      token === "valid-token"
-        ? { data: { user }, error: null }
-        : { data: { user: null }, error: new Error("Invalid") },
+    getUser: async (token) => ({
+      data: {
+        user:
+          token === "valid"
+            ? { id: "owner", email: "owner@example.com", user_metadata: {} }
+            : null,
+      },
+    }),
   },
-  from: query,
+  from(table) {
+    let changes,
+      filters = {};
+    const q = {
+      select: () => q,
+      eq: (k, v) => {
+        filters[k] = v;
+        return q;
+      },
+      update: (v) => {
+        changes = v;
+        return q;
+      },
+      upsert: () => q,
+      single: async () => ({
+        data:
+          table === "billing_customers"
+            ? row
+            : table === "billing_fx_rates"
+              ? { rate: 57, source_updated_at: new Date().toISOString() }
+              : quote,
+      }),
+      maybeSingle: async () => ({
+        data:
+          table === "billing_customers"
+            ? row
+            : table === "billing_fx_rates"
+              ? { rate: 57, source_updated_at: new Date().toISOString() }
+              : table === "billing_quotes"
+                ? quote
+                : table === "account_plans"
+                  ? prior
+                  : null,
+      }),
+      then(resolve) {
+        if (changes) Object.assign(row, changes);
+        resolve({ data: null, error: null });
+      },
+    };
+    return q;
+  },
   rpc: async (name, args) => {
     if (name === "billing_claim") {
-      lease = "00000000-0000-4000-8000-000000000001";
-      return {
-        data: {
-          token: lease,
-          checkout: checkout?.id,
-          checkout_plan: checkout?.metadata?.revbaze_plan,
-        },
-      };
+      if (processed.has(args.p_event)) return { data: { processed: true } };
+      if (lease) return { data: { busy: true } };
+      lease = "lease";
+      return { data: { token: lease } };
     }
     if (name === "billing_release") {
       lease = null;
-      return { data: null, error: null };
+      return { data: null };
     }
     if (name === "billing_apply") {
-      assert.equal(args.p_token, lease);
-      plan = args.p_plan;
+      prior = { plan: args.p_plan, expires_at: args.p_period_end };
       applied++;
+      processed.add(args.p_event);
       lease = null;
-      return { error: null };
+      return { data: null };
     }
-    throw new Error("Unexpected RPC");
+    if (name === "billing_quote_claim") {
+      assert.equal(args.p_php, 57000);
+      assert.equal(args.p_usd, 1000);
+      assert.equal(args.p_live, false);
+    }
+    if (name === "billing_quote_claim")
+      return { data: { provider_plan_id: "plan_growth" } };
+    throw new Error(name);
   },
-});
+};
+globalThis.__billingdb = db;
+let handler;
 globalThis.Deno = {
-  env: { get: (n) => env[n] },
-  serve: (handler) => {
-    globalThis.__handler = handler;
+  env: { get: (k) => env[k] },
+  serve: (fn) => {
+    handler = fn;
   },
 };
 const runtime = uri(
   (await readFile("supabase/functions/_shared/billing-runtime.ts", "utf8"))
     .replace(
-      /import \{ createClient \} from ['"]npm:@supabase\/supabase-js@2\.109\.0['"];/,
-      "const createClient=globalThis.__createClient;",
+      'import { createClient } from "npm:@supabase/supabase-js@2.109.0";',
+      "const createClient=()=>globalThis.__billingdb;",
     )
-    .replace(/['"]\.\/billing-core\.ts['"]/, JSON.stringify(core)),
+    .replace('"./billing-core.ts"', JSON.stringify(core)),
 );
-const handlers = async (path) => {
-  const source = (await readFile(path, "utf8"))
-    .replace(
-      /['"]\.\.\/_shared\/billing-runtime\.ts['"]/,
-      JSON.stringify(runtime),
-    )
-    .replace(/['"]\.\.\/_shared\/billing-core\.ts['"]/, JSON.stringify(core));
+async function load(file) {
   await import(
     uri(
-      source.replace(
-        /['"]\.\.\/_shared\/tracking\.ts['"]/,
-        JSON.stringify(tracking),
-      ),
+      (await readFile(file, "utf8"))
+        .replace('"../_shared/tracking.ts"', JSON.stringify(tracking))
+        .replace('"../_shared/billing-core.ts"', JSON.stringify(core))
+        .replace('"../_shared/billing-runtime.ts"', JSON.stringify(runtime)),
     )
   );
-  return globalThis.__handler;
-};
-const billing = await handlers("supabase/functions/billing/index.ts");
-const webhook = await handlers("supabase/functions/stripe-webhook/index.ts");
-const price = {
-  id: "price_growth",
-  product: "prod_growth",
-  active: true,
-  currency: "usd",
-  unit_amount: 1000,
-  recurring: { interval: "month", interval_count: 1 },
-};
+  return handler;
+}
+const billing = await load("supabase/functions/billing/index.ts"),
+  webhook = await load("supabase/functions/paymongo-webhook/index.ts");
 globalThis.fetch = async (url, options) => {
-  stripeCalls++;
-  assert(url.startsWith("https://api.stripe.com/v1/"));
-  assert.equal(options.headers.Authorization, "Bearer sk_test_local_fixture");
-  const path = url.split("/v1/")[1];
-  let value;
-  if (path.startsWith("prices?"))
-    value = {
-      data: [
-        path.includes("prod_pro")
-          ? {
-              ...price,
-              id: "price_pro",
-              product: "prod_pro",
-              unit_amount: 2900,
-            }
-          : price,
-      ],
-      has_more: false,
-    };
-  else if (path === "billing_portal/configurations/bpc_test")
-    value = {
-      active: true,
-      features: {
-        subscription_update: {
-          enabled: true,
-          proration_behavior: "always_invoice",
-        },
+  apiCalls++;
+  let data;
+  if (url.includes("subscriptions?")) data = items;
+  else if (url.endsWith("/subscriptions") && options.method === "POST")
+    data = {
+      id: "subs_one",
+      attributes: {
+        plan: { id: "plan_growth" },
+        status: "incomplete",
+        latest_invoice: { payment_intent: { id: "pi_one" } },
       },
     };
-  else if (path.startsWith("billing_portal/configurations?"))
-    value = {
-      data: [
-        {
-          is_default: true,
-          features: {
-            subscription_update: { proration_behavior: "always_invoice" },
-          },
-        },
-      ],
-    };
-  else if (path === "customers" || path === "customers/cus_fixture") {
-    const body = new URLSearchParams(options.body);
-    assert.equal(body.get("email"), user.email);
-    value = { id: "cus_fixture", email: user.email };
-  } else if (path.startsWith("subscriptions?"))
-    value = { data: active, has_more: false };
-  else if (path.startsWith("checkout/sessions?"))
-    value = { data: checkout ? [checkout] : [], has_more: false };
-  else if (path === "checkout/sessions") {
-    checkoutCreates++;
-    const body = new URLSearchParams(options.body);
-    assert.equal(body.get("mode"), "subscription");
-    assert.equal(body.get("ui_mode"), "hosted");
-    assert.equal(body.get("payment_method_collection"), "always");
-    assert.equal(body.get("subscription_data[trial_period_days]"), null);
-    assert.equal(
-      body.get(
-        "subscription_data[trial_settings][end_behavior][missing_payment_method]",
-      ),
-      null,
-    );
-    assert.equal(body.get("metadata[revbaze_trial_days]"), "0");
-    const target = body.get("metadata[revbaze_plan]");
-    assert.equal(
-      body.get("line_items[0][price]"),
-      target === "pro" ? "price_pro" : "price_growth",
-    );
-    assert.equal(
-      body.get("success_url"),
-      `https://app.example.com/#/checkout?result=success&plan=${target}&returnTo=%2Fupgrade`,
-    );
-    checkout = {
-      id: "cs_fixture",
-      status: "open",
-      success_url: body.get("success_url"),
-      cancel_url: body.get("cancel_url"),
-      url: "https://checkout.stripe.com/test",
-      client_reference_id: user.id,
-      metadata: {
-        revbaze_plan: target,
-        revbaze_trial_days: body.get("metadata[revbaze_trial_days]"),
+  else if (url.endsWith("/payment_intents/pi_one"))
+    data = {
+      id: "pi_one",
+      attributes: {
+        client_key: "pi_client",
+        amount: 57000,
+        currency: "PHP",
+        payment_method_allowed: ["card", "paymaya"],
       },
     };
-    value = checkout;
-  } else if (path === "checkout/sessions/cs_fixture") value = checkout;
-  else if (path === "checkout/sessions/cs_fixture/expire") {
-    checkout.status = "expired";
-    value = checkout;
-  } else if (path === "billing_portal/sessions") {
-    const body = new URLSearchParams(options.body);
-    if (env.STRIPE_PORTAL_CONFIGURATION_ID)
-      assert.equal(
-        body.get("configuration"),
-        env.STRIPE_PORTAL_CONFIGURATION_ID,
-      );
-    if (body.has("flow_data[type]")) {
-      assert.equal(body.get("flow_data[type]"), "subscription_update_confirm");
-      assert.equal(
-        body.get("flow_data[subscription_update_confirm][subscription]"),
-        "sub_test",
-      );
-      assert.equal(
-        body.get("flow_data[subscription_update_confirm][items][0][price]"),
-        "price_pro",
-      );
-      assert.equal(
-        body.get("flow_data[subscription_update_confirm][items][0][id]"),
-        "si_test",
-      );
-    }
-    value = { url: "https://billing.stripe.com/test" };
-  } else throw new Error("Unexpected Stripe request " + path);
-  return new Response(JSON.stringify(value), {
-    headers: { "Content-Type": "application/json" },
-  });
+  else if (url.endsWith("/subscriptions/subs_one")) {
+    if (options.method === "DELETE") items[0].attributes.status = "cancelled";
+    data = items[0];
+  } else throw new Error(url);
+  return new Response(JSON.stringify({ data }), { status: 200 });
 };
-const request = (action, extra = {}) =>
+const request = (action, auth = "valid", origin = "https://app.example.com") =>
   new Request("https://db.example.com/functions/v1/billing", {
     method: "POST",
-    headers: {
-      Authorization: "Bearer valid-token",
-      Origin: env.APP_URL,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ action, ...extra }),
+    headers: { authorization: `Bearer ${auth}`, origin },
+    body: JSON.stringify({ action, plan: "growth" }),
   });
-let result = await billing(
-  new Request("https://db.example.com/functions/v1/billing", {
-    method: "POST",
-    body: "{}",
-  }),
+assert.equal((await billing(request("checkout", "invalid"))).status, 401);
+assert.equal(apiCalls, 0);
+assert.equal(
+  (await billing(request("checkout", "valid", "https://evil.example"))).status,
+  403,
 );
-assert.equal(result.status, 401);
-assert.equal(stripeCalls, 0);
-result = await billing(
-  new Request("https://db.example.com/functions/v1/billing", {
-    method: "POST",
-    headers: { Origin: "https://attacker.example" },
-    body: "{}",
-  }),
-);
-assert.equal(result.status, 403);
-result = await billing(request("checkout", { plan: "free" }));
-assert.equal(result.status, 400);
-assert.equal(stripeCalls, 0);
-result = await billing(
-  request("checkout", {
-    plan: "growth",
-    price: "attacker_price",
-    user_id: "attacker",
-    success_url: "https://attacker.example",
-  }),
-);
+assert.equal(apiCalls, 0);
+let result = await billing(request("checkout"));
 assert.equal(result.status, 200);
-assert.equal((await result.json()).url, "https://checkout.stripe.com/test");
-assert.equal(plan, "free");
-result = await billing(request("checkout", { plan: "growth" }));
-assert.equal(result.status, 200);
-assert.equal(checkoutCreates, 1);
-// Old trial checkout must be replaced before it can be reused.
-checkout.metadata.revbaze_trial_days = "14";
-result = await billing(request("checkout", { plan: "growth" }));
-assert.equal(result.status, 200);
-assert.equal(checkoutCreates, 2);
-assert.equal(checkout.metadata.revbaze_trial_days, "0");
-active = [
+assert.equal((await result.json()).payment.amount, 57000);
+assert.equal(row.subscription_id, "subs_one");
+lease = "busy";
+assert.equal((await billing(request("checkout"))).status, 409);
+lease = null;
+items = [
   {
-    latest_invoice: { status: "paid" },
-    id: "sub_test",
-    status: "active",
-    items: {
-      data: [
-        {
-          id: "si_test",
-          quantity: 1,
-          current_period_end: Math.floor(Date.now() / 1000) + 86400,
-          price,
-        },
-      ],
+    id: "subs_one",
+    attributes: {
+      status: "active",
+      livemode: false,
+      customer_id: "cus_owner",
+      plan: {
+        id: "plan_growth",
+        amount: 57000,
+        currency: "PHP",
+        interval: "month",
+        interval_count: 1,
+      },
+      latest_invoice: { status: "paid", amount: 57000, currency: "PHP" },
+      next_billing_schedule: new Date(Date.now() + 86400000).toISOString(),
     },
   },
 ];
-result = await billing(request("checkout", { plan: "growth" }));
-assert.equal((await result.json()).url, "https://billing.stripe.com/test");
-assert.equal(checkoutCreates, 2);
-result = await billing(request("checkout", { plan: "pro" }));
-assert.equal(result.status, 200);
-assert.equal((await result.json()).url, "https://billing.stripe.com/test");
-assert.equal(checkoutCreates, 2);
-assert.equal(plan, "free", "Opening payment confirmation cannot grant access");
-env.STRIPE_PORTAL_CONFIGURATION_ID = "bpc_test";
-result = await billing(request("checkout", { plan: "pro" }));
-assert.equal(
-  result.status,
-  200,
-  "An explicit non-default Revbaze configuration must allow the upgrade",
-);
-assert.equal((await result.json()).url, "https://billing.stripe.com/test");
-const event = {
-  id: "evt_test",
+quote = {
+  plan: "growth",
+  usd_amount: 1000,
+  php_amount: 57000,
   livemode: false,
-  type: "checkout.session.completed",
-  data: {
-    object: { customer: "cus_fixture", client_reference_id: "attacker" },
-  },
 };
-const payload = JSON.stringify(event);
-const timestamp = Math.floor(Date.now() / 1000);
+result = await billing(request("status"));
+assert.equal(result.status, 200);
+assert.equal(applied, 1);
+assert.equal(
+  (
+    await webhook(
+      new Request("https://db.example.com/webhook", {
+        method: "POST",
+        body: "{}",
+      }),
+    )
+  ).status,
+  400,
+);
+const event = JSON.stringify({
+  data: {
+    id: "evt_one",
+    attributes: {
+      type: "subscription.invoice.paid",
+      livemode: false,
+      data: { attributes: { customer_id: "cus_owner" } },
+    },
+  },
+});
+const stamp = Math.floor(Date.now() / 1000);
 const key = await crypto.subtle.importKey(
   "raw",
-  new TextEncoder().encode(env.STRIPE_WEBHOOK_SECRET),
+  new TextEncoder().encode(env.PAYMONGO_WEBHOOK_SECRET),
   { name: "HMAC", hash: "SHA-256" },
   false,
   ["sign"],
 );
-const signature = Buffer.from(
+const sig = Buffer.from(
   await crypto.subtle.sign(
     "HMAC",
     key,
-    new TextEncoder().encode(`${timestamp}.${payload}`),
+    new TextEncoder().encode(`${stamp}.${event}`),
   ),
 ).toString("hex");
-result = await webhook(
-  new Request("https://db.example.com/functions/v1/stripe-webhook", {
+const hook = () =>
+  new Request("https://db.example.com/webhook", {
     method: "POST",
-    body: payload,
-  }),
-);
-assert.equal(result.status, 400);
-assert.equal(applied, 0);
-result = await webhook(
-  new Request("https://db.example.com/functions/v1/stripe-webhook", {
-    method: "POST",
-    headers: { "Stripe-Signature": `t=${timestamp},v1=${signature}` },
-    body: payload,
-  }),
-);
-assert.equal(result.status, 200);
-assert.equal(plan, "growth");
-assert.equal(applied, 1);
-// Delayed checkout events reconcile today's cancelled state, never the event's old state.
-active = [];
-result = await webhook(
-  new Request("https://db.example.com/functions/v1/stripe-webhook", {
-    method: "POST",
-    headers: { "Stripe-Signature": `t=${timestamp},v1=${signature}` },
-    body: payload,
-  }),
-);
-assert.equal(result.status, 200);
-assert.equal(plan, "free");
-// A Free account selecting Pro must get payment checkout, not a dashboard URL.
-checkout = null;
-result = await billing(request("checkout", { plan: "pro" }));
-assert.equal(result.status, 200);
-assert.equal((await result.json()).url, "https://checkout.stripe.com/test");
-assert.equal(plan, "free");
-assert.equal(checkout.metadata.revbaze_plan, "pro");
-checkout.cancel_url = "https://app.example.com/#/upgrade?checkout=cancelled";
-const beforeReplace = checkoutCreates;
-result = await billing(request("checkout", { plan: "pro" }));
-assert.equal(result.status, 200);
-assert.equal(
-  checkoutCreates,
-  beforeReplace + 1,
-  "A pending session with stale return URLs must be replaced",
-);
-assert(checkout.cancel_url.includes("/#/checkout?result=cancelled"));
-active = [
-  {
-    id: "sub_pro",
-    status: "active",
-    latest_invoice: { status: "open" },
-    items: {
-      data: [
-        {
-          id: "si_pro",
-          quantity: 1,
-          current_period_end: Math.floor(Date.now() / 1000) + 86400,
-          price: {
-            ...price,
-            id: "price_pro",
-            product: "prod_pro",
-            unit_amount: 2900,
-          },
-        },
-      ],
-    },
-  },
-];
-const deliver = () =>
-  webhook(
-    new Request("https://db.example.com/functions/v1/stripe-webhook", {
-      method: "POST",
-      headers: { "Stripe-Signature": `t=${timestamp},v1=${signature}` },
-      body: payload,
-    }),
-  );
-assert.equal((await deliver()).status, 200);
-assert.equal(plan, "free", "Unpaid Pro invoice cannot unlock Pro");
-active[0].latest_invoice.status = "paid";
-assert.equal((await deliver()).status, 200);
-assert.equal(plan, "pro");
+    headers: { "Paymongo-Signature": `t=${stamp},te=${sig},li=` },
+    body: event,
+  });
+assert.equal((await webhook(hook())).status, 200);
+const before = applied;
+assert.equal((await webhook(hook())).status, 200);
+assert.equal(applied, before);
 console.log(
-  "Billing handler tests passed: authentication, origin, server price selection, session reuse, duplicate-subscription prevention, portal, signed webhook, fresh reconciliation.",
+  "PASS: deployable function types, PayMongo authentication/origin checks, payment setup, leases, private quote validation, raw webhook signatures and replay protection.",
 );
+
+result = await billing(request("cancel"));
+assert.equal(result.status, 200);
+assert.equal(prior.plan, "growth", "cancellation preserves the paid period");
+assert.equal((await billing(request("status"))).status, 200);
+assert.equal(prior.plan, "growth");

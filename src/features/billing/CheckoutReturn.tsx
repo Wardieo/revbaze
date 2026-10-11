@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Check, LoaderCircle, ArrowRight } from "lucide-react";
+import { billingAction } from "../../services/billing";
 import { usePlan } from "../../hooks/usePlan";
 import { checkoutReturnPath } from "../../../supabase/functions/_shared/billing-core";
 import "./billing.css";
@@ -32,7 +33,9 @@ export function CheckoutReturn() {
         setExpired(true);
         return;
       }
-      void refetch();
+      void billingAction("status")
+        .then(() => refetch())
+        .catch(() => undefined);
     }, 2000);
     return () => clearInterval(timer);
   }, [cancelled, validPlan, confirmed, refetch]);
@@ -84,7 +87,7 @@ export function CheckoutReturn() {
               ? "Your plan hasn’t changed. Returning to your previous screen."
               : !validPlan
                 ? "Choose Growth or Pro to start a secure checkout."
-                : "We’re waiting for verified subscription access from Stripe. This can take a moment."}
+                : "We’re waiting for verified subscription access from PayMongo. This can take a moment."}
         </p>
         {confirmed && (
           <>
@@ -101,8 +104,8 @@ export function CheckoutReturn() {
                 </strong>
               </div>
               <p>
-                Your subscription renews monthly. Manage
-                your subscription in Settings.
+                Your subscription renews monthly. Manage your subscription in
+                Settings.
               </p>
             </div>
             <div className="checkout-status-steps">

@@ -114,11 +114,11 @@ export function LegalPage({ kind }: { kind: "Privacy" | "Terms" }) {
               Supabase privacy information
             </a>
             <a
-              href="https://stripe.com/privacy"
+              href="https://paymongo.com/privacy"
               target="_blank"
               rel="noreferrer"
             >
-              Stripe privacy information
+              PayMongo privacy information
             </a>
             <a
               href="https://developers.google.com/fonts/faq/privacy"

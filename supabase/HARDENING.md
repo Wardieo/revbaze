@@ -5,8 +5,8 @@
 These source changes are not deployed by editing the repository. Coordinate the frontend, migrations and functions; old frontends do not send tracking tokens and cannot use the new upload path. Open tabs should refresh after deployment.
 
 1. Apply migrations **029**, **030**, **031**, after all earlier migrations. Migration 030 builds daily counters from existing events; run during a quieter period and measure its duration on large databases. Database migration transactions must be allowed to finish before deploying the matching frontend.
-2. Set Edge secrets `TRACKING_SIGNING_SECRET` and `ASSET_CLEANUP_SECRET` to separate random values of at least 32 characters. Keep them out of `VITE_` variables. `APP_URL` must equal the actual frontend origin (scheme and hostname, without a trailing slash). Existing Supabase and Stripe secrets remain required.
-3. Deploy `review-events`, `image-upload`, `asset-cleanup`, and the updated `billing`, `stripe-webhook`, `workspace-invite` functions with the committed `supabase/config.toml` settings. Functions explicitly verify their own authorization.
+2. Set Edge secrets `TRACKING_SIGNING_SECRET` and `ASSET_CLEANUP_SECRET` to separate random values of at least 32 characters. Keep them out of `VITE_` variables. `APP_URL` must equal the actual frontend origin (scheme and hostname, without a trailing slash). Existing Supabase and PayMongo secrets remain required.
+3. Deploy `review-events`, `image-upload`, `asset-cleanup`, and the updated `billing`, `paymongo-webhook`, `billing-renewals`, `workspace-invite` functions with the committed `supabase/config.toml` settings. Functions explicitly verify their own authorization.
 4. Store the project origin in Supabase Vault as `revbaze_project_url` and the cleanup secret as `revbaze_asset_cleanup_secret`. Run `supabase/scripts/schedule-asset-cleanup.sql` once; re-running the named schedule updates it. Check cron/HTTP results for failed cleanup runs and alert on failures.
 5. Deploy the frontend and verify hosted smoke tests below. Keep Supabase/Vercel usage alerts enabled. A Vercel-only firewall does not protect the directly reachable Supabase function endpoint.
 

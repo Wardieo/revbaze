@@ -9,15 +9,26 @@ export const supabase =
     ? createClient(url, key, { global: { fetch: createAuthFetch(url) } })
     : null;
 // Reload after logout so no cached React state or SDK session survives navigation.
-export async function signOutFully(): Promise<{ error: { message: string } | null }> {
+export async function signOutFully(): Promise<{
+  error: { message: string } | null;
+}> {
   if (!supabase) return { error: null };
   try {
     const { error } = await supabase.auth.signOut();
-    if (error) console.warn("Remote sign-out could not complete; clearing this browser session.");
+    if (error)
+      console.warn(
+        "Remote sign-out could not complete; clearing this browser session.",
+      );
   } catch {
-    console.warn("Remote sign-out could not complete; clearing this browser session.");
+    console.warn(
+      "Remote sign-out could not complete; clearing this browser session.",
+    );
   } finally {
     queryClient.clear();
+    for (const paymentKey of Object.keys(sessionStorage)) {
+      if (paymentKey.startsWith("revbaze-payment:"))
+        sessionStorage.removeItem(paymentKey);
+    }
     clearPasswordRecovery();
     const storageKey = `sb-${new URL(url).hostname.split(".")[0]}-auth-token`;
     for (const store of [localStorage, sessionStorage]) {
@@ -47,9 +58,15 @@ export function isPasswordRecoverySession(userId: string | undefined) {
 let cachedUserId: string | undefined;
 supabase?.auth.onAuthStateChange((event, session) => {
   const nextUserId = session?.user.id;
-  if (event === "SIGNED_OUT" || (cachedUserId && cachedUserId !== nextUserId)) queryClient.clear();
+  if (event === "SIGNED_OUT" || (cachedUserId && cachedUserId !== nextUserId))
+    queryClient.clear();
   cachedUserId = nextUserId;
-  if (event === "PASSWORD_RECOVERY" && authCallback.active && authCallback.recovery && session) {
+  if (
+    event === "PASSWORD_RECOVERY" &&
+    authCallback.active &&
+    authCallback.recovery &&
+    session
+  ) {
     recoveryUser = session.user.id;
     recoveryExpiresAt = Date.now() + 15 * 60_000;
     try {
@@ -62,7 +79,9 @@ supabase?.auth.onAuthStateChange((event, session) => {
   }
 });
 export function canResetPassword(userId: string | undefined) {
-  return Boolean(userId && userId === recoveryUser && Date.now() < recoveryExpiresAt);
+  return Boolean(
+    userId && userId === recoveryUser && Date.now() < recoveryExpiresAt,
+  );
 }
 export function clearPasswordRecovery() {
   recoveryUser = null;
@@ -82,12 +101,16 @@ export const authBootstrap = supabase
         await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
         if (result.error && !authCallback.error)
           authCallback.error = result.error.message;
-        const inviteId = new URL(window.location.href).searchParams.get("invitation");
-        const target = inviteId && result.data.session && !authCallback.error
-          ? `/accept-invitation?invitation=${encodeURIComponent(inviteId)}`
-          : canResetPassword(result.data.session?.user.id) && !authCallback.error
-            ? "/reset-password"
-            : "/auth/callback";
+        const inviteId = new URL(window.location.href).searchParams.get(
+          "invitation",
+        );
+        const target =
+          inviteId && result.data.session && !authCallback.error
+            ? `/accept-invitation?invitation=${encodeURIComponent(inviteId)}`
+            : canResetPassword(result.data.session?.user.id) &&
+                !authCallback.error
+              ? "/reset-password"
+              : "/auth/callback";
         window.history.replaceState(
           null,
           "",

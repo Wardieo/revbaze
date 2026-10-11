@@ -90,7 +90,7 @@ const descriptions: Record<string, string> = {
   "/solutions":
     "Review invitations for hospitality, local services, retail, and other customer-facing businesses.",
   "/pricing":
-    "Compare Revbaze Free, Growth at $10/month, and Pro at $29/month. Clear account limits and monthly pricing; paid billing is not yet connected.",
+    "Compare Revbaze Free, Growth at $10/month, and Pro at $29/month. Clear account limits and monthly pricing; PHP payments through PayMongo.",
   "/about":
     "Learn why Revbaze is building a simpler way to invite honest customer feedback.",
   "/contact":
@@ -1325,10 +1325,10 @@ function PricingPage() {
             ],
             [
               "Will choosing Growth or Pro charge me?",
-              "After signup and email confirmation, Growth and Pro require paid Stripe checkout before paid-plan access begins. There is no free trial. Subscriptions renew monthly until cancelled. Free does not require checkout.",
+              "After signup and email confirmation, Growth and Pro require paid PayMongo checkout before paid-plan access begins. There is no free trial. Subscriptions renew monthly until cancelled. Free does not require checkout.",
             ],
             ["Are team seats shared across businesses?", "Yes. Growth includes five invited members and Pro includes 20 across the owner’s businesses, excluding the owner. Pending invitations reserve a seat. A member with access to multiple businesses counts once. All-business invitations cover the businesses owned when the invitation is sent."],
-            ["Can I cancel or request a refund?", "Owners can manage subscriptions through Settings → Plans & billing and Stripe’s billing portal. To request a refund of your first subscription charge, contact us within seven days of that charge. Renewals are excluded from this offer. Requests are reviewed manually; cancellation does not automatically issue a refund."],
+            ["Can I cancel or request a refund?", "Owners can manage subscriptions through Settings → Plans & billing in Revbaze. To request a refund of your first subscription charge, contact us within seven days of that charge. Renewals are excluded from this offer. Requests are reviewed manually; cancellation does not automatically issue a refund."],
             [
               "Is yearly billing available?",
               "Yearly pricing has not been configured. All prices shown are monthly, in US dollars.",

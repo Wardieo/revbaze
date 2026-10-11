@@ -1,11 +1,21 @@
 import { supabase } from "../lib/supabase";
+export type PaymentSetup = {
+  purpose?: "subscription" | "payment-method";
+  intentId: string;
+  clientKey: string;
+  publicKey: string;
+  amount: number;
+  currency: string;
+  methods: string[];
+  returnUrl: string;
+  userId?: string;
+};
 export async function billingAction(
-  action: "checkout" | "portal" | "status",
+  action: "checkout" | "status" | "cancel" | "payment-method",
   plan?: "growth" | "pro",
   returnTo?: string,
 ) {
-  if (!supabase)
-    throw new Error("Sign in to your cloud account to manage billing.");
+  if (!supabase) throw new Error("Sign in to manage billing");
   const { data, error } = await supabase.functions.invoke("billing", {
     body: {
       action,
@@ -14,20 +24,21 @@ export async function billingAction(
     },
   });
   if (error) {
-    let message =
-      "Billing is unavailable. Please try again or contact support.";
+    let message = "Billing is unavailable. Please try again.";
     if (error.context instanceof Response) {
       try {
         message = (await error.context.json()).error || message;
       } catch {
-        /* Keep a readable fallback. */
+        /* use fallback */
       }
     }
     throw new Error(message);
   }
   if (data?.error) throw new Error(data.error);
   return data as {
-    url?: string;
+    payment?: PaymentSetup;
+    scheduled?: boolean;
+    cancelled?: boolean;
     configured?: boolean;
     hasCustomer?: boolean;
     status?: string;
@@ -36,17 +47,25 @@ export async function billingAction(
   };
 }
 export async function openBilling(
-  action: "checkout" | "portal",
+  action: "checkout" | "portal" | "payment-method",
   plan?: "growth" | "pro",
   returnTo?: string,
 ) {
+  if (action === "portal") {
+    window.location.hash = "/settings?tab=billing";
+    return;
+  }
   const data = await billingAction(action, plan, returnTo);
-  const url = new URL(data.url || "");
-  const allowed =
-    action === "checkout"
-      ? ["checkout.stripe.com", "billing.stripe.com"].includes(url.hostname)
-      : url.hostname === "billing.stripe.com";
-  if (!allowed || url.protocol !== "https:")
-    throw new Error("Billing returned an invalid destination.");
-  window.location.assign(url.href);
+  if (data.scheduled) {
+    window.location.hash = "/settings?tab=billing&scheduled=1";
+    return;
+  }
+  if (!data.payment || !supabase) throw new Error("Payment setup unavailable");
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) throw new Error("Sign in again");
+  sessionStorage.setItem(
+    `revbaze-payment:${auth.user.id}`,
+    JSON.stringify({ ...data.payment, userId: auth.user.id }),
+  );
+  window.location.hash = "/pay";
 }
