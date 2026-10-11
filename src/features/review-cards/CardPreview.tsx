@@ -129,9 +129,11 @@ export function CardPreview({
       </div>
       <div className="preview-powered" style={{ color: appearance.paragraph_color || undefined }}>
         Made with{" "}
-        <strong>
-          <BrandLogo />
-        </strong>
+        <a href="/" className="preview-brand-link" aria-label="Revbaze landing page">
+          <strong>
+            <BrandLogo />
+          </strong>
+        </a>
       </div>
       {!interactive && (
         <span className="preview-only">
