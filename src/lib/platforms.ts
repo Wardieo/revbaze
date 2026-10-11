@@ -80,6 +80,94 @@ export const platforms = [
     hint: "https://play.google.com/store/apps/details?id=your.app",
   },
   {
+    id: "amazon",
+    name: "Amazon",
+    icon: "AM",
+    color: "#64748b",
+    domains: ["amazon.com"],
+    hint: "https://www.amazon.com/sp?seller=YOUR_SELLER_ID",
+  },
+  {
+    id: "shopify",
+    name: "Shopify",
+    icon: "SH",
+    color: "#64748b",
+    domains: ["myshopify.com"],
+    hint: "https://your-store.myshopify.com/products/your-product",
+  },
+  {
+    id: "etsy",
+    name: "Etsy",
+    icon: "ET",
+    color: "#64748b",
+    domains: ["etsy.com"],
+    hint: "https://www.etsy.com/shop/your-shop",
+  },
+  {
+    id: "healthgrades",
+    name: "Healthgrades",
+    icon: "HG",
+    color: "#64748b",
+    domains: ["healthgrades.com"],
+    hint: "https://www.healthgrades.com/physician/your-profile",
+  },
+  {
+    id: "clutch",
+    name: "Clutch",
+    icon: "CL",
+    color: "#64748b",
+    domains: ["clutch.co"],
+    hint: "https://clutch.co/profile/your-business",
+  },
+  {
+    id: "booking",
+    name: "Booking.com",
+    icon: "BK",
+    color: "#64748b",
+    domains: ["booking.com"],
+    hint: "https://www.booking.com/hotel/your-country/your-property.html",
+  },
+  {
+    id: "opentable",
+    name: "OpenTable",
+    icon: "OT",
+    color: "#64748b",
+    domains: ["opentable.com"],
+    hint: "https://www.opentable.com/r/your-restaurant",
+  },
+  {
+    id: "fresha",
+    name: "Fresha",
+    icon: "FR",
+    color: "#64748b",
+    domains: ["fresha.com"],
+    hint: "https://www.fresha.com/a/your-business",
+  },
+  {
+    id: "course-report",
+    name: "Course Report",
+    icon: "CR",
+    color: "#64748b",
+    domains: ["coursereport.com"],
+    hint: "https://www.coursereport.com/schools/your-school",
+  },
+  {
+    id: "houzz",
+    name: "Houzz",
+    icon: "HZ",
+    color: "#64748b",
+    domains: ["houzz.com"],
+    hint: "https://www.houzz.com/pro/your-business",
+  },
+  {
+    id: "viator",
+    name: "Viator",
+    icon: "VI",
+    color: "#64748b",
+    domains: ["viator.com"],
+    hint: "https://www.viator.com/tours/your-tour",
+  },
+  {
     id: "custom",
     name: "Custom review URL",
     icon: "↗",
@@ -90,4 +178,59 @@ export const platforms = [
 ] as const;
 export function getPlatform(id: string) {
   return platforms.find((p) => p.id === id) || platforms[platforms.length - 1];
+}
+
+export const categoryRecommendations: Record<string, readonly string[]> = {
+  "Software & technology": [
+    "g2",
+    "capterra",
+    "trustpilot",
+    "product-hunt",
+    "app-store",
+    "google-play",
+    "google",
+    "facebook",
+  ],
+  "Retail & e-commerce": [
+    "google",
+    "trustpilot",
+    "facebook",
+    "amazon",
+    "shopify",
+    "etsy",
+    "yelp",
+  ],
+  "Health & wellness": ["google", "facebook", "healthgrades", "yelp", "fresha"],
+  "Professional services": [
+    "google",
+    "clutch",
+    "trustpilot",
+    "facebook",
+    "yelp",
+  ],
+  Hospitality: ["tripadvisor", "google", "booking", "facebook", "yelp"],
+  "Food & beverage": ["google", "tripadvisor", "yelp", "facebook", "opentable"],
+  "Beauty & personal care": ["google", "fresha", "facebook", "yelp"],
+  "Education & training": ["google", "facebook", "trustpilot", "course-report"],
+  "Home services": ["google", "houzz", "yelp", "facebook", "trustpilot"],
+  "Travel & tourism": [
+    "tripadvisor",
+    "google",
+    "viator",
+    "booking",
+    "trustpilot",
+    "facebook",
+  ],
+  Other: ["google", "facebook", "trustpilot", "yelp"],
+};
+
+export const businessCategories = Object.keys(categoryRecommendations);
+
+/** Case insensitive matching preserves categories saved before recommendations existed. */
+export function getRecommendedPlatforms(category = "") {
+  const key =
+    businessCategories.find(
+      (value) => value.toLowerCase() === category.trim().toLowerCase(),
+    ) || "Other";
+  return categoryRecommendations[key].map(getPlatform);
 }

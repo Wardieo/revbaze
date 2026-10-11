@@ -3,68 +3,75 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useWorkspace } from "../stores/workspace";
 
+/** Only metadata changes reload a workspace. Analytics use small, visible-tab polls. */
 export function useLiveWorkspace(
   userId: string | undefined,
   businessId: string | undefined,
 ) {
   const client = useQueryClient();
-  const cardIds = useWorkspace((s) =>
-    s.cards
-      .map((c) => c.id)
-      .sort()
-      .join(","),
-  );
   const loadedBusiness = useWorkspace((s) => s.business?.id);
   useEffect(() => {
-    if (
-      !supabase ||
-      !userId ||
-      !businessId ||
-      loadedBusiness !== businessId
-    )
+    if (!supabase || !userId || !businessId || loadedBusiness !== businessId)
       return;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let channel: ReturnType<typeof supabase.channel> | undefined;
     const refresh = () => {
-      if (timer) return;
+      if (timer || document.visibilityState !== "visible") return;
       timer = setTimeout(() => {
         timer = undefined;
         void client.invalidateQueries({
           queryKey: ["workspace", userId, businessId],
         });
-      }, 250);
+        for (const key of [
+          "card-performance",
+          "overview-summary",
+          "analytics-summary",
+          "analytics-business-comparison",
+        ])
+          void client.invalidateQueries({ queryKey: [key, userId] });
+      }, 1000);
     };
-    const channel = supabase.channel(
-      `workspace-events:${userId}:${businessId}`,
-    );
-    for (const table of ["review_cards", "business_review_links"]) {
-      channel.on("postgres_changes", { event: "*", schema: "public", table, filter: `business_id=eq.${businessId}` }, refresh);
-    }
-    channel.on("postgres_changes", { event: "UPDATE", schema: "public", table: "businesses", filter: `id=eq.${businessId}` }, refresh);
-    const ids = cardIds ? cardIds.split(",") : [];
-    // Realtime IN filters accept at most 100 values per binding.
-    for (let offset = 0; offset < ids.length; offset += 100) {
+    const sync = () => {
+      if (document.visibilityState !== "visible") {
+        if (timer) clearTimeout(timer);
+        timer = undefined;
+        if (channel) void supabase!.removeChannel(channel);
+        channel = undefined;
+        return;
+      }
+      if (channel) return;
+      channel = supabase!.channel(`workspace-metadata:${userId}:${businessId}`);
+      for (const table of ["review_cards", "business_review_links"])
+        channel.on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table,
+            filter: `business_id=eq.${businessId}`,
+          },
+          refresh,
+        );
       channel.on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "UPDATE",
           schema: "public",
-          table: "review_card_events",
-          filter: `review_card_id=in.(${ids.slice(offset, offset + 100).join(",")})`,
+          table: "businesses",
+          filter: `id=eq.${businessId}`,
         },
         refresh,
       );
-    }
-    channel.subscribe((status) => {
-      if (status === "SUBSCRIBED") refresh();
-    });
-    const onFocus = () => {
-      if (document.visibilityState === "visible") refresh();
+      channel.subscribe((status) => {
+        if (status === "SUBSCRIBED") refresh();
+      });
     };
-    document.addEventListener("visibilitychange", onFocus);
+    sync();
+    document.addEventListener("visibilitychange", sync);
     return () => {
       if (timer) clearTimeout(timer);
-      document.removeEventListener("visibilitychange", onFocus);
-      void supabase!.removeChannel(channel);
+      document.removeEventListener("visibilitychange", sync);
+      if (channel) void supabase!.removeChannel(channel);
     };
-  }, [client, userId, businessId, loadedBusiness, cardIds]);
+  }, [client, userId, businessId, loadedBusiness]);
 }

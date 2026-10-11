@@ -38,6 +38,8 @@ const program = ts.createProgram(
     "supabase/functions/billing/index.ts",
     "supabase/functions/review-events/index.ts",
     "supabase/functions/stripe-webhook/index.ts",
+    "supabase/functions/image-upload/index.ts",
+    "supabase/functions/asset-cleanup/index.ts",
     virtualFile,
   ],
   options,
@@ -58,6 +60,9 @@ const compile = (s) =>
   }).outputText;
 const uri = (s) =>
   "data:text/javascript;base64," + Buffer.from(compile(s)).toString("base64");
+const tracking = uri(
+  await readFile("supabase/functions/_shared/tracking.ts", "utf8"),
+);
 const core = uri(
   await readFile("supabase/functions/_shared/billing-core.ts", "utf8"),
 );
@@ -146,7 +151,14 @@ const handlers = async (path) => {
       JSON.stringify(runtime),
     )
     .replace(/['"]\.\.\/_shared\/billing-core\.ts['"]/, JSON.stringify(core));
-  await import(uri(source));
+  await import(
+    uri(
+      source.replace(
+        /['"]\.\.\/_shared\/tracking\.ts['"]/,
+        JSON.stringify(tracking),
+      ),
+    )
+  );
   return globalThis.__handler;
 };
 const billing = await handlers("supabase/functions/billing/index.ts");
@@ -215,7 +227,12 @@ globalThis.fetch = async (url, options) => {
     assert.equal(body.get("ui_mode"), "hosted");
     assert.equal(body.get("payment_method_collection"), "always");
     assert.equal(body.get("subscription_data[trial_period_days]"), null);
-    assert.equal(body.get("subscription_data[trial_settings][end_behavior][missing_payment_method]"), null);
+    assert.equal(
+      body.get(
+        "subscription_data[trial_settings][end_behavior][missing_payment_method]",
+      ),
+      null,
+    );
     assert.equal(body.get("metadata[revbaze_trial_days]"), "0");
     const target = body.get("metadata[revbaze_plan]");
     assert.equal(

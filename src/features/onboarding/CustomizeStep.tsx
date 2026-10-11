@@ -3,8 +3,9 @@ import { TemplatePicker } from "../../components/onboarding/TemplatePicker";
 import { ImageUpload } from "../../components/onboarding/ImageUpload";
 import { uploadImage } from "../../services/workspace";
 import { PlatformOrder } from "./PlatformsStep";
-import { slugAvailable } from "../../services/onboarding";
-import { validateSlug } from "../../lib/validation";
+import { usePublicSlug } from "../../hooks/usePublicSlug";
+import { SlugStatus } from "../../components/shared/SlugStatus";
+import { slugify, validateSlug } from "../../lib/validation";
 import type { DraftRow, OnboardingData } from "./model";
 export function CustomizeStep({
   data,
@@ -17,46 +18,17 @@ export function CustomizeStep({
   update: (data: OnboardingData) => void;
   onSlugState: (state: string) => void;
 }) {
-  const [availability, setAvailability] = useState({
-    slug: "",
-    message: "Checking availability…",
+  const [automaticSlug, setAutomaticSlug] = useState(
+    !data.card.slug || data.card.slug === slugify(data.business.name),
+  );
+  const { message, available } = usePublicSlug({
+    slug: data.card.slug,
+    cardId: row.card_id,
+    automatic: automaticSlug,
+    name: data.business.name,
+    onGenerated: (slug) => update({ ...data, card: { ...data.card, slug } }),
   });
-  useEffect(() => {
-    let alive = true;
-    let valid = "";
-    try {
-      validateSlug(data.card.slug);
-    } catch (err) {
-      valid = (err as Error).message;
-    }
-    if (valid) {
-      onSlugState(valid);
-      return;
-    }
-    onSlugState("Checking availability…");
-    const timer = setTimeout(() => {
-      slugAvailable(data.card.slug, row.card_id)
-        .then((free) => {
-          if (alive) {
-            const message = free
-              ? ""
-              : "This URL is already taken. Try another slug.";
-            setAvailability({ slug: data.card.slug, message });
-            onSlugState(message);
-          }
-        })
-        .catch((err) => {
-          if (alive) {
-            setAvailability({ slug: data.card.slug, message: err.message });
-            onSlugState(err.message);
-          }
-        });
-    }, 350);
-    return () => {
-      alive = false;
-      clearTimeout(timer);
-    };
-  }, [data.card.slug, row.card_id, onSlugState]);
+  useEffect(() => onSlugState(message), [message, onSlugState]);
   const field = (key: string, value: string) =>
     update({ ...data, card: { ...data.card, [key]: value } });
   let format = "";
@@ -65,11 +37,6 @@ export function CustomizeStep({
   } catch (err) {
     format = (err as Error).message;
   }
-  const message =
-    format ||
-    (availability.slug === data.card.slug
-      ? availability.message
-      : "Checking availability…");
   return (
     <div className="onboard-customize">
       <div className="stack-form">
@@ -89,11 +56,16 @@ export function CustomizeStep({
               value={data.card.slug}
               aria-describedby="onboard-slug-help"
               aria-invalid={Boolean(format)}
-              onChange={(e) => field("slug", e.target.value)}
+              onChange={(e) => {
+                setAutomaticSlug(false);
+                field("slug", e.target.value);
+              }}
             />
+            <SlugStatus available={available} message={message} />
           </div>
           <small
             id="onboard-slug-help"
+            aria-live="polite"
             className={
               message && message !== "Checking availability…"
                 ? "onboard-inline-error"
@@ -144,19 +116,100 @@ export function CustomizeStep({
         <label>
           Card background color
           <div className="onboard-color">
-            <input type="color" aria-label="Card background color" value={data.card.background} onChange={e => field("background", e.target.value)} />
+            <input
+              type="color"
+              aria-label="Card background color"
+              value={data.card.background}
+              onChange={(e) => field("background", e.target.value)}
+            />
             <span>{data.card.background}</span>
           </div>
         </label>
         <fieldset className="onboard-page-background">
           <legend>Background behind your card</legend>
-          <p className="onboard-help">Customize the full page around your card. Your card’s own color stays separate.</p>
-        <label>Background behind the card<div className="onboard-color"><input type="color" aria-label="Page background color" value={data.card.page_background || "#f3f6fa"} onChange={e => field("page_background", e.target.value)} /><span>{data.card.page_background || "#f3f6fa"}</span></div></label>
-        <div className="card-background-presets" role="group" aria-label="Page background color presets"><button type="button" className="button" onClick={() => field("page_background", "#ffffff")}>White</button><button type="button" className="button" onClick={() => update({ ...data, card: { ...data.card, page_background: "#042751", background_style: "abstract" } })}>Revbaze navy</button></div>
-        <label>Page background style<select value={data.card.background_style || "abstract"} onChange={e => field("background_style", e.target.value)}><option value="solid">Plain (no pattern)</option><option value="gradient">Soft gradient</option><option value="dots">Subtle dots</option><option value="abstract">Abstract rings & dots</option><option value="waves">Soft waves</option></select></label>
+          <p className="onboard-help">
+            Customize the full page around your card. Your card’s own color
+            stays separate.
+          </p>
+          <label>
+            Background behind the card
+            <div className="onboard-color">
+              <input
+                type="color"
+                aria-label="Page background color"
+                value={data.card.page_background || "#f3f6fa"}
+                onChange={(e) => field("page_background", e.target.value)}
+              />
+              <span>{data.card.page_background || "#f3f6fa"}</span>
+            </div>
+          </label>
+          <div
+            className="card-background-presets"
+            role="group"
+            aria-label="Page background color presets"
+          >
+            <button
+              type="button"
+              className="button"
+              onClick={() => field("page_background", "#ffffff")}
+            >
+              White
+            </button>
+            <button
+              type="button"
+              className="button"
+              onClick={() =>
+                update({
+                  ...data,
+                  card: {
+                    ...data.card,
+                    page_background: "#042751",
+                    background_style: "abstract",
+                  },
+                })
+              }
+            >
+              Revbaze navy
+            </button>
+          </div>
+          <label>
+            Page background style
+            <select
+              value={data.card.background_style || "abstract"}
+              onChange={(e) => field("background_style", e.target.value)}
+            >
+              <option value="solid">Plain (no pattern)</option>
+              <option value="gradient">Soft gradient</option>
+              <option value="dots">Subtle dots</option>
+              <option value="abstract">Abstract rings & dots</option>
+              <option value="waves">Soft waves</option>
+            </select>
+          </label>
         </fieldset>
-        <label>Card border<select value={data.card.border_style} onChange={e => field("border_style", e.target.value)}><option value="none">No border</option><option value="solid">Solid</option><option value="dashed">Dashed</option></select></label>
-        <label>Border color<div className="onboard-color"><input type="color" aria-label="Card border color" disabled={data.card.border_style === "none"} value={data.card.border_color} onChange={e => field("border_color", e.target.value)} /><span>{data.card.border_color}</span></div></label>
+        <label>
+          Card border
+          <select
+            value={data.card.border_style}
+            onChange={(e) => field("border_style", e.target.value)}
+          >
+            <option value="none">No border</option>
+            <option value="solid">Solid</option>
+            <option value="dashed">Dashed</option>
+          </select>
+        </label>
+        <label>
+          Border color
+          <div className="onboard-color">
+            <input
+              type="color"
+              aria-label="Card border color"
+              disabled={data.card.border_style === "none"}
+              value={data.card.border_color}
+              onChange={(e) => field("border_color", e.target.value)}
+            />
+            <span>{data.card.border_color}</span>
+          </div>
+        </label>
         <label>
           Button appearance
           <select

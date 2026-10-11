@@ -22,7 +22,7 @@ export function PlatformIcon({
     )[id] || p.name;
   return (
     <span
-      className={`platform-icon platform-${id} ${small ? "small" : ""} ${logo ? "has-brand-logo" : ""}`}
+      className={`platform-icon platform-${id} ${small ? "small" : ""} ${logo ? "has-brand-logo" : "has-placeholder"}`}
       style={{ color: p.color }}
       role="img"
       aria-label={name}

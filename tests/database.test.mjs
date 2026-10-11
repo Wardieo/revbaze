@@ -30,12 +30,86 @@ await db.exec(
     "utf8",
   ),
 );
-await db.exec(await readFile("supabase/migrations/202610100021_onboarding_card_background.sql", "utf8"));
-await db.exec(await readFile("supabase/migrations/202610100022_onboarding_card_border.sql", "utf8"));
-await db.exec(await readFile("supabase/migrations/202610100023_card_background_styles.sql", "utf8"));
-await db.exec(await readFile("supabase/migrations/202610100024_card_page_background.sql", "utf8"));
-await db.exec(await readFile("supabase/migrations/202610100025_abstract_page_background.sql", "utf8"));
-await db.exec(await readFile("supabase/migrations/202610100026_card_text_colors.sql", "utf8"));
+await db.exec(
+  await readFile(
+    "supabase/migrations/202610100021_onboarding_card_background.sql",
+    "utf8",
+  ),
+);
+await db.exec(
+  await readFile(
+    "supabase/migrations/202610100022_onboarding_card_border.sql",
+    "utf8",
+  ),
+);
+await db.exec(
+  await readFile(
+    "supabase/migrations/202610100023_card_background_styles.sql",
+    "utf8",
+  ),
+);
+await db.exec(
+  await readFile(
+    "supabase/migrations/202610100024_card_page_background.sql",
+    "utf8",
+  ),
+);
+await db.exec(
+  await readFile(
+    "supabase/migrations/202610100025_abstract_page_background.sql",
+    "utf8",
+  ),
+);
+await db.exec(
+  await readFile(
+    "supabase/migrations/202610100026_card_text_colors.sql",
+    "utf8",
+  ),
+);
+await db.exec(
+  await readFile(
+    "supabase/migrations/202610110027_category_review_platforms.sql",
+    "utf8",
+  ),
+);
+await db.exec(
+  await readFile(
+    "supabase/migrations/202610110028_shopify_review_platform.sql",
+    "utf8",
+  ),
+);
+for (const [id, url] of [
+  ["amazon", "https://www.amazon.com/sp?seller=123"],
+  ["etsy", "https://www.etsy.com/shop/example"],
+  ["shopify", "https://example.myshopify.com/products/example"],
+  ["healthgrades", "https://www.healthgrades.com/physician/example"],
+  ["clutch", "https://clutch.co/profile/example"],
+  ["booking", "https://www.booking.com/hotel/example.html"],
+  ["opentable", "https://www.opentable.com/r/example"],
+  ["fresha", "https://www.fresha.com/a/example"],
+  ["course-report", "https://www.coursereport.com/schools/example"],
+  ["houzz", "https://www.houzz.com/pro/example"],
+  ["viator", "https://www.viator.com/tours/example"],
+]) {
+  assert.equal(
+    (
+      await db.query("select public.valid_review_url($1,$2) as valid", [
+        id,
+        url,
+      ])
+    ).rows[0].valid,
+    true,
+  );
+  assert.equal(
+    (
+      await db.query("select public.valid_review_url($1,$2) as valid", [
+        id,
+        "https://unrelated.example.com",
+      ])
+    ).rows[0].valid,
+    false,
+  );
+}
 const buckets = (
   await db.query(
     "select * from storage.buckets where id in ('profile-assets','business-assets')",
@@ -413,9 +487,19 @@ assert.equal(published.card.appearance_settings.background, "#edf2f8");
 assert.equal(published.card.appearance_settings.border_style, "dashed");
 assert.equal(published.card.appearance_settings.border_color, "#042751");
 await db.exec("reset role");
-await db.query("update public.review_cards set appearance_settings=appearance_settings || $1::jsonb where id=$2", [JSON.stringify({title_color:"#042751",paragraph_color:"#52647b"}), published.card.id]);
+await db.query(
+  "update public.review_cards set appearance_settings=appearance_settings || $1::jsonb where id=$2",
+  [
+    JSON.stringify({ title_color: "#042751", paragraph_color: "#52647b" }),
+    published.card.id,
+  ],
+);
 await db.exec("set role authenticated");
-const publicBorder=(await db.query("select public.published_review_card($1) as card",[published.card.slug])).rows[0].card;
+const publicBorder = (
+  await db.query("select public.published_review_card($1) as card", [
+    published.card.slug,
+  ])
+).rows[0].card;
 assert.equal(publicBorder.appearance_settings.border_style, "dashed");
 assert.equal(publicBorder.appearance_settings.title_color, "#042751");
 assert.equal(publicBorder.appearance_settings.paragraph_color, "#52647b");

@@ -16,3 +16,11 @@ verify_jwt = false
 [functions.workspace-invite]
 # Owner identity is verified explicitly before the private reservation RPC.
 verify_jwt = false
+
+[functions.image-upload]
+# Verified Auth identity and service-only quota reservation precede upload.
+verify_jwt = false
+
+[functions.asset-cleanup]
+# Requires the dedicated secret held by the scheduled worker.
+verify_jwt = false

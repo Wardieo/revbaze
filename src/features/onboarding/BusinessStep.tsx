@@ -3,19 +3,7 @@ import { ImageUpload } from "../../components/onboarding/ImageUpload";
 import { uploadImage } from "../../services/workspace";
 import { validateDestination } from "../../lib/validation";
 import { useState } from "react";
-const categories = [
-  "Software & technology",
-  "Retail & e-commerce",
-  "Health & wellness",
-  "Professional services",
-  "Hospitality",
-  "Food & beverage",
-  "Beauty & personal care",
-  "Education & training",
-  "Home services",
-  "Travel & tourism",
-  "Other",
-];
+import { businessCategories as categories } from "../../lib/platforms";
 export function BusinessStep({
   data,
   update,

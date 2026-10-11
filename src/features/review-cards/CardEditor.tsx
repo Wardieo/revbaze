@@ -1,3 +1,5 @@
+import { usePublicSlug } from "../../hooks/usePublicSlug";
+import { SlugStatus } from "../../components/shared/SlugStatus";
 import { useWorkspaceRole } from "../../hooks/useWorkspaceRole";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
 import { PlatformForm } from "../review-platforms/PlatformsPage";
@@ -26,7 +28,12 @@ import { CardPreview } from "./CardPreview";
 import { cardPageBackground } from "./cardPageBackground";
 import { TemplatePicker } from "../../components/onboarding/TemplatePicker";
 import { uploadImage } from "../../services/workspace";
-import { cardUrl, cardQRUrl, slugify, validateSlug } from "../../lib/validation";
+import {
+  cardUrl,
+  cardQRUrl,
+  slugify,
+  validateSlug,
+} from "../../lib/validation";
 import type { ReviewCard } from "../../types/workspace";
 import { QRCustomizer } from "../../components/onboarding/QRCustomizer";
 export function CardEditor({ onComplete }: { onComplete?: () => void }) {
@@ -105,6 +112,14 @@ export function CardEditor({ onComplete }: { onComplete?: () => void }) {
             })),
         };
   });
+  const [automaticSlug, setAutomaticSlug] = useState(!existing);
+  const slugStatus = usePublicSlug({
+    slug: card.slug,
+    cardId: card.id,
+    automatic: automaticSlug,
+    name: card.name || workspace.business?.name || "business",
+    onGenerated: (slug) => update({ slug }),
+  });
   function update(values: Partial<ReviewCard>) {
     setCard((c) => ({ ...c, ...values }));
     setError("");
@@ -148,7 +163,17 @@ export function CardEditor({ onComplete }: { onComplete?: () => void }) {
       notify(err instanceof Error ? err.message : "Unable to copy.", true);
     }
   }
-  if (!permissions.canEdit) return <section className="card padded"><h2>View-only access</h2><p>Your role can view dashboard activity and analytics. Ask the owner for Editor access to manage review cards.</p><Link to="/cards">Back to review cards</Link></section>;
+  if (!permissions.canEdit)
+    return (
+      <section className="card padded">
+        <h2>View-only access</h2>
+        <p>
+          Your role can view dashboard activity and analytics. Ask the owner for
+          Editor access to manage review cards.
+        </p>
+        <Link to="/cards">Back to review cards</Link>
+      </section>
+    );
   if (!workspace.business)
     return (
       <section className="card">
@@ -265,6 +290,8 @@ export function CardEditor({ onComplete }: { onComplete?: () => void }) {
               )
                 errors.links =
                   "Choose at least one enabled destination for an active card.";
+              if (!errors.slug && !slugStatus.available)
+                errors.slug = slugStatus.message;
               setFieldErrors(errors);
               setError("");
               const first = Object.keys(errors)[0];
@@ -421,8 +448,12 @@ export function CardEditor({ onComplete }: { onComplete?: () => void }) {
                       value={card.slug}
                       placeholder="acme-studio"
                       maxLength={60}
-                      onChange={(e) => update({ slug: e.target.value })}
+                      onChange={(e) => {
+                        setAutomaticSlug(false);
+                        update({ slug: e.target.value });
+                      }}
                     />
+                    <SlugStatus {...slugStatus} />
                   </div>
                 </label>
                 {fieldErrors.slug && (
@@ -430,9 +461,13 @@ export function CardEditor({ onComplete }: { onComplete?: () => void }) {
                     {fieldErrors.slug}
                   </p>
                 )}
-                <small id="card-slug-help" className="form-help">
-                  Choose a unique URL. Keep it unchanged after printing QR
-                  codes.
+                <small
+                  id="card-slug-help"
+                  className="form-help"
+                  aria-live="polite"
+                >
+                  {slugStatus.message || "Available · reserved when you save."}{" "}
+                  Keep it unchanged after printing QR codes.
                 </small>
                 <label>
                   Heading
@@ -719,18 +754,140 @@ export function CardEditor({ onComplete }: { onComplete?: () => void }) {
                   </label>
                 </div>
                 <div className="form-columns">
-                  <label>Title text color<div className="color-input"><input type="color" aria-label="Title text color" value={card.appearance_settings.title_color || "#303846"} onChange={e => appearance({ title_color: e.target.value })} /><span>{card.appearance_settings.title_color || "#303846"}</span></div></label>
-                  <label>Paragraph text color<div className="color-input"><input type="color" aria-label="Paragraph text color" value={card.appearance_settings.paragraph_color || "#8c98ab"} onChange={e => appearance({ paragraph_color: e.target.value })} /><span>{card.appearance_settings.paragraph_color || "#8c98ab"}</span></div></label>
+                  <label>
+                    Title text color
+                    <div className="color-input">
+                      <input
+                        type="color"
+                        aria-label="Title text color"
+                        value={
+                          card.appearance_settings.title_color || "#303846"
+                        }
+                        onChange={(e) =>
+                          appearance({ title_color: e.target.value })
+                        }
+                      />
+                      <span>
+                        {card.appearance_settings.title_color || "#303846"}
+                      </span>
+                    </div>
+                  </label>
+                  <label>
+                    Paragraph text color
+                    <div className="color-input">
+                      <input
+                        type="color"
+                        aria-label="Paragraph text color"
+                        value={
+                          card.appearance_settings.paragraph_color || "#8c98ab"
+                        }
+                        onChange={(e) =>
+                          appearance({ paragraph_color: e.target.value })
+                        }
+                      />
+                      <span>
+                        {card.appearance_settings.paragraph_color || "#8c98ab"}
+                      </span>
+                    </div>
+                  </label>
                 </div>
-                <label>Background behind the card<div className="color-input"><input type="color" aria-label="Page background color" value={card.appearance_settings.page_background || "#f3f6fa"} onChange={e => appearance({ page_background: e.target.value })} /><span>{card.appearance_settings.page_background || "#f3f6fa"}</span></div></label>
-                <div className="card-background-presets" role="group" aria-label="Page background color presets">
-                  <Button onClick={() => appearance({ page_background: "#ffffff" })}>White</Button>
-                  <Button onClick={() => appearance({ page_background: "#042751", background_style: "abstract" })}>Revbaze navy</Button>
+                <label>
+                  Background behind the card
+                  <div className="color-input">
+                    <input
+                      type="color"
+                      aria-label="Page background color"
+                      value={
+                        card.appearance_settings.page_background || "#f3f6fa"
+                      }
+                      onChange={(e) =>
+                        appearance({ page_background: e.target.value })
+                      }
+                    />
+                    <span>
+                      {card.appearance_settings.page_background || "#f3f6fa"}
+                    </span>
+                  </div>
+                </label>
+                <div
+                  className="card-background-presets"
+                  role="group"
+                  aria-label="Page background color presets"
+                >
+                  <Button
+                    onClick={() => appearance({ page_background: "#ffffff" })}
+                  >
+                    White
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      appearance({
+                        page_background: "#042751",
+                        background_style: "abstract",
+                      })
+                    }
+                  >
+                    Revbaze navy
+                  </Button>
                 </div>
-                <label>Page background style<select value={card.appearance_settings.background_style || "abstract"} onChange={e => appearance({ background_style: e.target.value as "solid" | "gradient" | "dots" | "abstract" | "waves" })}><option value="solid">Plain (no pattern)</option><option value="gradient">Soft gradient</option><option value="dots">Subtle dots</option><option value="abstract">Abstract rings & dots</option><option value="waves">Soft waves</option></select></label>
+                <label>
+                  Page background style
+                  <select
+                    value={
+                      card.appearance_settings.background_style || "abstract"
+                    }
+                    onChange={(e) =>
+                      appearance({
+                        background_style: e.target.value as
+                          "solid" | "gradient" | "dots" | "abstract" | "waves",
+                      })
+                    }
+                  >
+                    <option value="solid">Plain (no pattern)</option>
+                    <option value="gradient">Soft gradient</option>
+                    <option value="dots">Subtle dots</option>
+                    <option value="abstract">Abstract rings & dots</option>
+                    <option value="waves">Soft waves</option>
+                  </select>
+                </label>
                 <div className="form-columns">
-                  <label>Card border<select value={card.appearance_settings.border_style || "solid"} onChange={e => appearance({ border_style: e.target.value as "none" | "solid" | "dashed" })}><option value="none">No border</option><option value="solid">Solid</option><option value="dashed">Dashed</option></select></label>
-                  <label>Border color<div className="color-input"><input type="color" aria-label="Border color" disabled={card.appearance_settings.border_style === "none"} value={card.appearance_settings.border_color || "#e5e9ef"} onChange={e => appearance({ border_color: e.target.value })} /><span>{card.appearance_settings.border_color || "#e5e9ef"}</span></div></label>
+                  <label>
+                    Card border
+                    <select
+                      value={card.appearance_settings.border_style || "solid"}
+                      onChange={(e) =>
+                        appearance({
+                          border_style: e.target.value as
+                            "none" | "solid" | "dashed",
+                        })
+                      }
+                    >
+                      <option value="none">No border</option>
+                      <option value="solid">Solid</option>
+                      <option value="dashed">Dashed</option>
+                    </select>
+                  </label>
+                  <label>
+                    Border color
+                    <div className="color-input">
+                      <input
+                        type="color"
+                        aria-label="Border color"
+                        disabled={
+                          card.appearance_settings.border_style === "none"
+                        }
+                        value={
+                          card.appearance_settings.border_color || "#e5e9ef"
+                        }
+                        onChange={(e) =>
+                          appearance({ border_color: e.target.value })
+                        }
+                      />
+                      <span>
+                        {card.appearance_settings.border_color || "#e5e9ef"}
+                      </span>
+                    </div>
+                  </label>
                 </div>
                 <label>
                   Button style
@@ -789,7 +946,9 @@ export function CardEditor({ onComplete }: { onComplete?: () => void }) {
                     ) : (
                       <Copy size={16} />
                     )}
-                    {copiedValue === cardUrl(card.slug) && <span aria-live="polite">Copied</span>}
+                    {copiedValue === cardUrl(card.slug) && (
+                      <span aria-live="polite">Copied</span>
+                    )}
                   </button>
                 </div>
                 <div className="phase-note">
@@ -802,7 +961,11 @@ export function CardEditor({ onComplete }: { onComplete?: () => void }) {
                     key={existing.id}
                     url={cardQRUrl(existing.slug)}
                     businessId={existing.business_id}
-                    businessLogo={existing.appearance_settings.logo_url || workspace.business?.logo_url || ""}
+                    businessLogo={
+                      existing.appearance_settings.logo_url ||
+                      workspace.business?.logo_url ||
+                      ""
+                    }
                   />
                 )}
                 {!existing && (

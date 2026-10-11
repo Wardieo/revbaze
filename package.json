@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "node tests/query-cache.test.mjs && node tests/overview.test.mjs && node tests/auth.test.mjs && node tests/session-logout.test.mjs && node tests/recovery-access.test.mjs && node tests/domain.test.mjs && node tests/database.test.mjs && node tests/plans.test.mjs && node tests/members.test.mjs && node tests/members-functions.test.mjs && node tests/billing.test.mjs && node tests/billing-functions.test.mjs && node tests/review-events.test.mjs && node tests/workspace-mutations.test.mjs && node tests/contact.test.mjs",
+    "test": "node tests/query-cache.test.mjs && node tests/overview.test.mjs && node tests/auth.test.mjs && node tests/session-logout.test.mjs && node tests/recovery-access.test.mjs && node tests/hardening.test.mjs && node tests/edge-hardening.test.mjs && node tests/public-slug.test.mjs && node tests/domain.test.mjs && node tests/database.test.mjs && node tests/plans.test.mjs && node tests/members.test.mjs && node tests/members-functions.test.mjs && node tests/billing.test.mjs && node tests/billing-functions.test.mjs && node tests/review-events.test.mjs && node tests/workspace-mutations.test.mjs && node tests/contact.test.mjs",
     "format": "prettier --write src tests vite.config.ts index.html"
   },
   "dependencies": {

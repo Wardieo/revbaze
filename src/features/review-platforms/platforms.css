@@ -190,30 +190,109 @@
   }
 }
 /* Use desktop width for useful destination information rather than a tall stack. */
-.platforms-panel .destination-row { display:grid; grid-template-columns:36px minmax(180px,1.5fr) minmax(140px,1fr) 32px 76px 116px; gap:16px; align-items:center; padding:20px 22px; }
-.platform-list-heading { display:grid; grid-template-columns:minmax(232px,1.5fr) minmax(140px,1fr) 124px 116px; gap:16px; padding:12px 22px; background:var(--bg); border-bottom:1px solid var(--border); font-size:12px; font-weight:500; color:var(--muted); }
-.platforms-panel .destination-details { min-width:0; }
-.platforms-panel .destination-details > strong { font-size:16px; }
-.platforms-panel .destination-provider { font-size:12px; margin:3px 0 5px; }
-.platforms-panel .destination-url { display:block; font-size:13px; }
-.platforms-panel .destination-usage { min-width:0; }
-.platforms-panel .destination-usage > span { font-size:13px; color:var(--muted); }
-.platforms-panel .destination-usage small { font-size:12px; color:var(--muted); }
-.platforms-panel .used-by { margin-top:7px; }
-.platforms-panel .used-by a { font-size:12px; overflow-wrap:anywhere; max-width:100%; }
-.platforms-panel .row-actions { justify-content:flex-end; }
-.platforms-panel .row-actions .icon-button { width:34px; height:34px; }
-.platforms-panel .status-badge { font-size:11px; justify-self:start; }
-.platform-summary-card { padding:20px 22px; }
-@media(max-width:1100px) {
- .platforms-panel .destination-row { grid-template-columns:36px minmax(0,1fr) 32px 116px; }
- .platforms-panel .destination-usage { grid-column:2; grid-row:2; }
- .platforms-panel .destination-row > .status-badge { display:none; }
- .platform-list-heading { display:none; }
+.platforms-panel .destination-row {
+  display: grid;
+  grid-template-columns: 36px minmax(180px, 1.5fr) minmax(
+      140px,
+      1fr
+    ) 32px 76px 116px;
+  gap: 16px;
+  align-items: center;
+  padding: 20px 22px;
 }
-@media(max-width:600px) {
- .platforms-panel .destination-row { grid-template-columns:32px minmax(0,1fr) 32px; gap:12px; padding:18px; }
- .platforms-panel .destination-usage { grid-column:2/4; }
- .platforms-panel .row-actions { grid-column:2/4; justify-content:flex-start; margin:0; }
- .platforms-panel .destination-details { min-width:0; }
+.platform-list-heading {
+  display: grid;
+  grid-template-columns: minmax(232px, 1.5fr) minmax(140px, 1fr) 124px 116px;
+  gap: 16px;
+  padding: 12px 22px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.platforms-panel .destination-details {
+  min-width: 0;
+}
+.platforms-panel .destination-details > strong {
+  font-size: 16px;
+}
+.platforms-panel .destination-provider {
+  font-size: 12px;
+  margin: 3px 0 5px;
+}
+.platforms-panel .destination-url {
+  display: block;
+  font-size: 13px;
+}
+.platforms-panel .destination-usage {
+  min-width: 0;
+}
+.platforms-panel .destination-usage > span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.platforms-panel .destination-usage small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.platforms-panel .used-by {
+  margin-top: 7px;
+}
+.platforms-panel .used-by a {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.platforms-panel .row-actions {
+  justify-content: flex-end;
+}
+.platforms-panel .row-actions .icon-button {
+  width: 34px;
+  height: 34px;
+}
+.platforms-panel .status-badge {
+  font-size: 11px;
+  justify-self: start;
+}
+.platform-summary-card {
+  padding: 20px 22px;
+}
+@media (max-width: 1100px) {
+  .platforms-panel .destination-row {
+    grid-template-columns: 36px minmax(0, 1fr) 32px 116px;
+  }
+  .platforms-panel .destination-usage {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .platforms-panel .destination-row > .status-badge {
+    display: none;
+  }
+  .platform-list-heading {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .platforms-panel .destination-row {
+    grid-template-columns: 32px minmax(0, 1fr) 32px;
+    gap: 12px;
+    padding: 18px;
+  }
+  .platforms-panel .destination-usage {
+    grid-column: 2/4;
+  }
+  .platforms-panel .row-actions {
+    grid-column: 2/4;
+    justify-content: flex-start;
+    margin: 0;
+  }
+  .platforms-panel .destination-details {
+    min-width: 0;
+  }
+}
+
+.modal.platform-form-modal {
+  width: 760px;
+  max-width: 100%;
 }

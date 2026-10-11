@@ -1,3 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "../../lib/supabase";
+import { useSession } from "../../hooks/useSession";
+import type { CardEvent } from "../../types/workspace";
 import { useWorkspaceRole } from "../../hooks/useWorkspaceRole";
 import { useDowngradeAccess } from "../../hooks/useDowngradeAccess";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
@@ -44,6 +48,26 @@ export function CardsPage() {
       cardLimit;
   const { cards, links, events, business, busy, saveCard, deleteCard } =
     useWorkspace();
+  const { session } = useSession();
+  const performance = useQuery({
+    queryKey: ["card-performance", session?.user.id, business?.id],
+    enabled: Boolean(
+      supabase &&
+      session &&
+      business &&
+      access.ready &&
+      access.plan.analyticsMonths,
+    ),
+    queryFn: async () => {
+      const { data, error } = await supabase!.rpc("card_performance_summary", {
+        p_business_id: business!.id,
+      });
+      if (error) throw error;
+      return data as CardEvent[];
+    },
+    refetchInterval: 30_000,
+  });
+  const performanceEvents = supabase ? performance.data || [] : events;
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All cards");
   const [menu, setMenu] = useState<string | null>(null);
@@ -109,7 +133,11 @@ export function CardsPage() {
         title="A place for every conversation"
         description="Create, customize, and share your review invitations."
       >
-        <Button variant="primary" asChild disabled={!permissions.canEdit || !access.ready}>
+        <Button
+          variant="primary"
+          asChild
+          disabled={!permissions.canEdit || !access.ready}
+        >
           <Link
             to={
               limitReached
@@ -182,7 +210,9 @@ export function CardsPage() {
                     .slice((current - 1) * 6, current * 6)
                     .map((card) => {
                       const stats = metrics(
-                        events.filter((e) => e.review_card_id === card.id),
+                        performanceEvents.filter(
+                          (e) => e.review_card_id === card.id,
+                        ),
                       );
                       const destinations = card.links.filter(
                         (cl) =>
@@ -235,12 +265,16 @@ export function CardsPage() {
                             </div>
                           </td>
                           <td>
-                            {access.ready && access.plan.analyticsMonths
+                            {access.ready &&
+                            access.plan.analyticsMonths &&
+                            (!supabase || performance.isSuccess)
                               ? stats.views.toLocaleString()
                               : "—"}
                           </td>
                           <td>
-                            {access.ready && access.plan.analyticsMonths
+                            {access.ready &&
+                            access.plan.analyticsMonths &&
+                            (!supabase || performance.isSuccess)
                               ? stats.clicks.toLocaleString()
                               : "—"}
                           </td>
@@ -307,7 +341,10 @@ export function CardsPage() {
                                       </Link>
                                       <button
                                         disabled={
-                                          busy || !permissions.canEdit || !access.ready || limitReached
+                                          busy ||
+                                          !permissions.canEdit ||
+                                          !access.ready ||
+                                          limitReached
                                         }
                                         onClick={() => duplicate(card)}
                                       >
@@ -460,7 +497,11 @@ export function CardsPage() {
                 Clear filters
               </Button>
             ) : (
-              <Button variant="primary" asChild disabled={!permissions.canEdit || !access.ready}>
+              <Button
+                variant="primary"
+                asChild
+                disabled={!permissions.canEdit || !access.ready}
+              >
                 <Link
                   to={
                     limitReached

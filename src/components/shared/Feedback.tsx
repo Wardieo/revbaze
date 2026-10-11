@@ -40,10 +40,12 @@ export function Dialog({
   title,
   children,
   close,
+  className = "",
 }: {
   title: string;
   children: ReactNode;
   close: () => void;
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(close);
@@ -84,7 +86,7 @@ export function Dialog({
   return (
     <div className="modal-backdrop" onClick={close}>
       <div
-        className="modal"
+        className={`modal ${className}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}

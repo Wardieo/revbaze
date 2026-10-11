@@ -13,9 +13,11 @@ import "./traffic-sources.css";
 export function TrafficSources({
   sources,
   events = [],
+  uniqueCounts,
 }: {
   sources: Map<string, number>;
   events?: CardEvent[];
+  uniqueCounts?: Record<string, number>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const rows = [...sources].sort((a, b) => b[1] - a[1]);
@@ -53,11 +55,15 @@ export function TrafficSources({
                   (e.traffic_source || e.referrer || "Direct / unknown") ===
                   source,
               );
-              const visitors = new Set(
-                matching
-                  .filter((e) => e.event_type === "page_view" && e.visitor_key)
-                  .map((e) => e.visitor_key),
-              ).size;
+              const visitors =
+                uniqueCounts?.[source] ??
+                new Set(
+                  matching
+                    .filter(
+                      (e) => e.event_type === "page_view" && e.visitor_key,
+                    )
+                    .map((e) => e.visitor_key),
+                ).size;
               const clicks = matching
                 .filter((e) => e.event_type === "outbound_click")
                 .reduce((sum, e) => sum + (e.count ?? 1), 0);

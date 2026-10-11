@@ -1,3 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
+import { useSession } from "../../hooks/useSession";
+import { supabase } from "../../lib/supabase";
+import { loadOverviewEvents } from "../../services/workspace";
 import { useWorkspaceRole } from "../../hooks/useWorkspaceRole";
 import { useDowngradeAccess } from "../../hooks/useDowngradeAccess";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
@@ -32,14 +36,28 @@ export function OverviewPage() {
   const notify = useFeedback();
   const { copiedValue, markCopied } = useCopyFeedback();
   const workspace = useWorkspace();
+  const { session } = useSession();
+  const overview = useQuery({
+    queryKey: ["overview-summary", session?.user.id, workspace.business?.id],
+    enabled: Boolean(supabase && session && workspace.business),
+    queryFn: () => loadOverviewEvents(workspace.business!.id),
+    refetchInterval: 30_000,
+  });
   const access = usePlan();
   const accountAccess = usePlan();
   const workspaceRole = useWorkspaceRole();
-  const available = access.ready;
+  const available = access.ready && (!supabase || overview.isSuccess);
   const platformAccess = access.ready && access.plan.analyticsMonths > 0;
   const data = useMemo(
-    () => workspaceOverview(workspace, days),
-    [workspace, days],
+    () =>
+      workspaceOverview(
+        {
+          ...workspace,
+          events: supabase ? overview.data || [] : workspace.events,
+        },
+        days,
+      ),
+    [workspace, days, overview.data],
   );
   const shareCards = workspace.cards.filter(
     (c) =>
@@ -96,6 +114,12 @@ export function OverviewPage() {
   ];
   return (
     <div className="overview-demo">
+      {overview.isError && (
+        <p className="form-error" role="alert">
+          Unable to load performance.{" "}
+          <button onClick={() => void overview.refetch()}>Retry</button>
+        </p>
+      )}
       {availability.data &&
         (availability.data.businesses.some((b) => !b.available) ||
           availability.data.cards.some((c) => !c.available)) && (
@@ -312,29 +336,31 @@ export function OverviewPage() {
             </Button>
           </div>
         </section>
-        {accountAccess.ready && workspaceRole.isOwner && accountAccess.plan.id !== "pro" && (
-          <aside className="card overview-upgrade">
-            <span className="count-badge">
-              {accountAccess.plan.name} plan
-            </span>
-            <h2>
-              {accountAccess.plan.id === "free"
-                ? "Give your business room to grow"
-                : "More possibilities with Pro"}
-            </h2>
-            <p>
-              {accountAccess.plan.id === "free"
-                ? "Add more cards, customize QR codes, and discover what drives clicks."
-                : "Unlimited businesses and review cards, with 24 months of analytics."}
-            </p>
-            <Link to="/upgrade" className="button primary">
-              {accountAccess.plan.id === "free"
-                ? "Explore Growth · $10/month"
-                : "Explore Pro · $29/month"}
-              <ArrowRight size={15} />
-            </Link>
-          </aside>
-        )}
+        {accountAccess.ready &&
+          workspaceRole.isOwner &&
+          accountAccess.plan.id !== "pro" && (
+            <aside className="card overview-upgrade">
+              <span className="count-badge">
+                {accountAccess.plan.name} plan
+              </span>
+              <h2>
+                {accountAccess.plan.id === "free"
+                  ? "Give your business room to grow"
+                  : "More possibilities with Pro"}
+              </h2>
+              <p>
+                {accountAccess.plan.id === "free"
+                  ? "Add more cards, customize QR codes, and discover what drives clicks."
+                  : "Unlimited businesses and review cards, with 24 months of analytics."}
+              </p>
+              <Link to="/upgrade" className="button primary">
+                {accountAccess.plan.id === "free"
+                  ? "Explore Growth · $10/month"
+                  : "Explore Pro · $29/month"}
+                <ArrowRight size={15} />
+              </Link>
+            </aside>
+          )}
       </div>
       <section className="card overview-recent">
         <div className="card-heading">

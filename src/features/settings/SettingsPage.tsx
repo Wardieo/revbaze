@@ -1,3 +1,4 @@
+import { loadOverviewEvents } from "../../services/workspace";
 import { usePlan } from "../../hooks/usePlan";
 import { useWorkspaceRole } from "../../hooks/useWorkspaceRole";
 import { BrandLogo } from "../../components/shared/BrandLogo";
@@ -108,7 +109,25 @@ export function SettingsPage() {
           ) : tab === "security" ? (
             <SecuritySettings />
           ) : tab === "billing" ? (
-            workspaceRole.isOwner ? <BillingSettings /> : <section className="card padded"><h2>{workspaceAccess.ready ? `${workspaceAccess.plan.name} workspace plan` : "Workspace plan"}</h2><p>Your access is included in the owner’s subscription, subject to your assigned role.</p><p>The workspace owner manages this business’s subscription. Your workspace access follows their plan.</p></section>
+            workspaceRole.isOwner ? (
+              <BillingSettings />
+            ) : (
+              <section className="card padded">
+                <h2>
+                  {workspaceAccess.ready
+                    ? `${workspaceAccess.plan.name} workspace plan`
+                    : "Workspace plan"}
+                </h2>
+                <p>
+                  Your access is included in the owner’s subscription, subject
+                  to your assigned role.
+                </p>
+                <p>
+                  The workspace owner manages this business’s subscription. Your
+                  workspace access follows their plan.
+                </p>
+              </section>
+            )
           ) : (
             <DataSettings />
           )}
@@ -118,13 +137,13 @@ export function SettingsPage() {
   );
 }
 function savedResetDeadline(key: string) {
-    try {
-      const value = Number(localStorage.getItem(key));
-      return Number.isFinite(value) ? value : 0;
-    } catch {
-      return 0;
-    }
+  try {
+    const value = Number(localStorage.getItem(key));
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
   }
+}
 
 function SecuritySettings() {
   const notify = useFeedback();
@@ -159,14 +178,19 @@ function SecuritySettings() {
       <section className="card padded">
         <h2>Password & sign-in</h2>
         <p className="section-description">
-          We’ll send a secure link to your account email. Open it to choose a new password.
+          We’ll send a secure link to your account email. Open it to choose a
+          new password.
         </p>
         <form
           className="stack-form"
           onSubmit={async (e) => {
             e.preventDefault();
-            if (!supabase || !session?.user.email || busy || sending.current) return;
-            const currentDeadline = Math.max(deadline, savedResetDeadline(cooldownKey));
+            if (!supabase || !session?.user.email || busy || sending.current)
+              return;
+            const currentDeadline = Math.max(
+              deadline,
+              savedResetDeadline(cooldownKey),
+            );
             if (Date.now() < currentDeadline) {
               setDeadline(currentDeadline);
               setNow(Date.now());
@@ -175,9 +199,16 @@ function SecuritySettings() {
             sending.current = true;
             setBusy(true);
             try {
-              const { error } = await supabase.auth.resetPasswordForEmail(session.user.email, {
-                redirectTo: confirmationRedirect(window.location.origin, window.location.pathname, true),
-              });
+              const { error } = await supabase.auth.resetPasswordForEmail(
+                session.user.email,
+                {
+                  redirectTo: confirmationRedirect(
+                    window.location.origin,
+                    window.location.pathname,
+                    true,
+                  ),
+                },
+              );
               if (error) throw error;
               setSent(true);
               const nextDeadline = Date.now() + 60_000;
@@ -188,12 +219,11 @@ function SecuritySettings() {
               } catch {
                 /* Keep the in-memory countdown if storage is unavailable. */
               }
-              notify("Password reset email requested. Check your inbox and spam folder.");
-            } catch (err) {
               notify(
-                authErrorMessage(err),
-                true,
+                "Password reset email requested. Check your inbox and spam folder.",
               );
+            } catch (err) {
+              notify(authErrorMessage(err), true);
             } finally {
               sending.current = false;
               setBusy(false);
@@ -206,11 +236,21 @@ function SecuritySettings() {
           </label>
           {sent && (
             <p className="form-help" role="status">
-              Check your inbox and spam folder for the reset link. Your password stays the same until you open the link and save a new one.
+              Check your inbox and spam folder for the reset link. Your password
+              stays the same until you open the link and save a new one.
             </p>
           )}
-          <Button variant="primary" disabled={!supabase || !session?.user.email || busy || remaining > 0}>
-            {busy ? "Sending…" : remaining > 0 ? `Resend in ${countdown}` : "Send password reset email"}
+          <Button
+            variant="primary"
+            disabled={
+              !supabase || !session?.user.email || busy || remaining > 0
+            }
+          >
+            {busy
+              ? "Sending…"
+              : remaining > 0
+                ? `Resend in ${countdown}`
+                : "Send password reset email"}
           </Button>
         </form>
         {!supabase && (
@@ -266,35 +306,48 @@ function SecuritySettings() {
 }
 function DataSettings() {
   const workspace = useWorkspace();
+  const [exporting, setExporting] = useState(false);
   const notify = useFeedback();
   return (
     <section className="card padded">
       <h2>Your workspace data</h2>
       <p className="section-description">
-        Download your business, review cards, platform links, and the activity
-        currently loaded in this workspace.
+        Download your business, review cards, platform links, recent performance
+        totals, and workspace activity.
       </p>
       <Button
-        onClick={() => {
-          const data = {
-            exported_at: new Date().toISOString(),
-            business: workspace.business,
-            cards: workspace.cards,
-            links: workspace.links,
-            events: workspace.events,
-            activity: workspace.activity,
-          };
-          const url = URL.createObjectURL(
-            new Blob([JSON.stringify(data, null, 2)], {
-              type: "application/json",
-            }),
-          );
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "revbaze-workspace.json";
-          a.click();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-          notify("Workspace export downloaded.");
+        disabled={exporting}
+        onClick={async () => {
+          setExporting(true);
+          try {
+            const events =
+              supabase && workspace.business
+                ? await loadOverviewEvents(workspace.business.id)
+                : workspace.events;
+            const data = {
+              exported_at: new Date().toISOString(),
+              business: workspace.business,
+              cards: workspace.cards,
+              links: workspace.links,
+              events,
+              activity: workspace.activity,
+            };
+            const url = URL.createObjectURL(
+              new Blob([JSON.stringify(data, null, 2)], {
+                type: "application/json",
+              }),
+            );
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "revbaze-workspace.json";
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            notify("Workspace export downloaded.");
+          } catch {
+            notify("Unable to export your workspace. Please try again.", true);
+          } finally {
+            setExporting(false);
+          }
         }}
       >
         <Download size={14} />

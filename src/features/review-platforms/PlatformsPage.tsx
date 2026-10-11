@@ -1,3 +1,4 @@
+import { PlatformPicker } from "../../components/shared/PlatformPicker";
 import { useWorkspaceRole } from "../../hooks/useWorkspaceRole";
 import "./platforms.css";
 import { usePlan } from "../../hooks/usePlan";
@@ -25,7 +26,11 @@ import {
 } from "../../components/shared/Feedback";
 import { PlatformIcon } from "../../components/shared/PlatformIcon";
 import { useWorkspace } from "../../stores/workspace";
-import { getPlatform, platforms } from "../../lib/platforms";
+import {
+  getPlatform,
+  getRecommendedPlatforms,
+  platforms,
+} from "../../lib/platforms";
 import { validateDestination } from "../../lib/validation";
 import type { ReviewLink } from "../../types/workspace";
 export function PlatformForm({
@@ -38,10 +43,19 @@ export function PlatformForm({
   onSaved?: (link: ReviewLink) => void;
 }) {
   const business = useWorkspace((s) => s.business);
+  const links = useWorkspace((s) => s.links);
+  const alreadyAdded = (id: string) =>
+    links.some((link) => link.platform_id === id && link.id !== editing?.id);
   const busy = useWorkspace((s) => s.busy);
   const save = useWorkspace((s) => s.saveLink);
   const notify = useFeedback();
-  const [platform, setPlatform] = useState(editing?.platform_id || "google");
+  const [platform, setPlatform] = useState(
+    editing?.platform_id ||
+      [...getRecommendedPlatforms(business?.category), ...platforms].find(
+        (item) => !alreadyAdded(item.id),
+      )?.id ||
+      "custom",
+  );
   const [name, setName] = useState(
     editing?.display_name || getPlatform(platform).name,
   );
@@ -62,6 +76,7 @@ export function PlatformForm({
   return (
     <Dialog
       title={editing ? "Edit review platform" : "Add a review platform"}
+      className="platform-form-modal"
       close={close}
     >
       <div className="platform-form-identity">
@@ -84,6 +99,12 @@ export function PlatformForm({
           e.preventDefault();
           if (!business) {
             setError("Set up your business first.");
+            return;
+          }
+          if (alreadyAdded(platform)) {
+            setError(
+              "This platform has already been added. Choose another platform or edit the existing destination.",
+            );
             return;
           }
           const issues: typeof fieldErrors = {};
@@ -132,26 +153,23 @@ export function PlatformForm({
           }
         }}
       >
-        <label>
-          Review platform
-          <select
-            value={platform}
-            disabled={busy}
-            onChange={(e) => {
-              if (name === getPlatform(platform).name)
-                setName(getPlatform(e.target.value).name);
-              setPlatform(e.target.value);
-              setFieldErrors({});
-              setError("");
-            }}
-          >
-            {platforms.map((p) => (
-              <option value={p.id} key={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <PlatformPicker
+          category={business?.category || ""}
+          selected={[platform]}
+          added={links
+            .filter((link) => link.id !== editing?.id)
+            .map((link) => link.platform_id)}
+          isDisabled={(id) => busy || alreadyAdded(id)}
+          onSelect={(id) => {
+            if (id === platform || alreadyAdded(id)) return;
+            if (name === getPlatform(platform).name || !name.trim())
+              setName(id === "custom" ? "" : getPlatform(id).name);
+            setPlatform(id);
+            setUrl("");
+            setFieldErrors({});
+            setError("");
+          }}
+        />
         <label>
           Display name
           <input
@@ -228,7 +246,11 @@ export function PlatformForm({
           <Button type="button" onClick={close}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit" disabled={busy}>
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={busy || alreadyAdded(platform)}
+          >
             {busy ? "Saving…" : editing ? "Save changes" : "Add platform"}
           </Button>
         </div>
@@ -248,7 +270,10 @@ export function PlatformsPage({ embedded = false }: { embedded?: boolean }) {
   const limitReached =
     access.ready && access.plan.id === "free" && links.length >= 1;
   const addPlatform = () => {
-    if (!permissions.canEdit) { notify("Your role has view-only access.", true); return; }
+    if (!permissions.canEdit) {
+      notify("Your role has view-only access.", true);
+      return;
+    }
     if (limitReached)
       notify(
         "Free includes 1 review platform. Upgrade to Growth to add more.",
@@ -270,7 +295,11 @@ export function PlatformsPage({ embedded = false }: { embedded?: boolean }) {
           title="Every platform, one place"
           description="Add the review links you want your customers to choose from."
         >
-          <Button variant="primary" onClick={addPlatform} disabled={!business || !permissions.canEdit}>
+          <Button
+            variant="primary"
+            onClick={addPlatform}
+            disabled={!business || !permissions.canEdit}
+          >
             <Plus size={15} />
             Add platform
           </Button>
@@ -361,7 +390,11 @@ export function PlatformsPage({ embedded = false }: { embedded?: boolean }) {
               {filtered.length} external {links.length === 1 ? "link" : "links"}
             </span>
             {embedded && (
-              <Button variant="primary" onClick={addPlatform} disabled={!permissions.canEdit}>
+              <Button
+                variant="primary"
+                onClick={addPlatform}
+                disabled={!permissions.canEdit}
+              >
                 <Plus size={14} />
                 Add platform
               </Button>

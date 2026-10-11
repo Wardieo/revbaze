@@ -1,3 +1,9 @@
+import {
+  boundedBody,
+  hashSource,
+  signSession,
+  verifySession,
+} from "../_shared/tracking.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.109.0";
 const headers = {
   "Access-Control-Allow-Origin": "*",
@@ -11,16 +17,23 @@ Deno.serve(async (request: Request) => {
   if (request.method !== "POST")
     return new Response(null, { status: 405, headers });
   try {
-    const text = await request.text();
-    if (text.length > 2048) return new Response(null, { status: 413, headers });
-    const input = JSON.parse(text);
+    const input = JSON.parse(
+      new TextDecoder().decode(await boundedBody(request, 4096)),
+    );
+    if (!input || typeof input !== "object")
+      return new Response(null, { status: 400, headers });
+    const secret = Deno.env.get("TRACKING_SIGNING_SECRET");
+    if (!secret || secret.length < 32)
+      return new Response(null, { status: 503, headers });
     const uuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (
       typeof input.slug !== "string" ||
       input.slug.length > 60 ||
-      !uuid.test(input.id) ||
-      !["page_view", "outbound_click"].includes(input.type) ||
+      (input.action !== "session" && !uuid.test(input.id)) ||
+      (input.action !== "session" &&
+        !["page_view", "outbound_click"].includes(input.type)) ||
+      !uuid.test(input.visitorId) ||
       (input.type === "outbound_click" && !uuid.test(input.linkId))
     )
       return new Response(null, { status: 400, headers });
@@ -29,6 +42,39 @@ Deno.serve(async (request: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false } },
     );
+    // Hosted ingress must overwrite this header; choose the proxy-appended (rightmost) address.
+    const address = request.headers
+      .get("x-forwarded-for")
+      ?.split(",")
+      .at(-1)
+      ?.trim();
+    if (!address) return new Response(null, { status: 503, headers });
+    const caller = await hashSource(address, secret);
+    let session;
+    if (input.action !== "session") {
+      try {
+        session = await verifySession(input.token, secret);
+        if (
+          session.slug !== input.slug ||
+          session.visitor !== input.visitorId ||
+          session.source !== caller
+        )
+          return new Response(null, { status: 403, headers });
+      } catch {
+        return new Response(null, { status: 403, headers });
+      }
+    }
+    const limit = await db.rpc("allow_tracking_request", {
+      p_source: caller,
+      p_slug: input.slug,
+      p_session: session?.session || null,
+    });
+    if (limit.error) return new Response(null, { status: 503, headers });
+    if (limit.data !== true)
+      return new Response(null, {
+        status: 429,
+        headers: { ...headers, "Retry-After": "60" },
+      });
     // Only the published public projection can authorize tracking; never accept a browser-supplied card ID.
     const published = await db.rpc("published_review_card", {
       p_slug: input.slug,
@@ -43,6 +89,23 @@ Deno.serve(async (request: Request) => {
         ))
     )
       return new Response(null, { status: 404, headers });
+    if (session && session.card !== card.id)
+      return new Response(null, { status: 403, headers });
+    if (input.action === "session") {
+      const expires = Date.now() + 15 * 60_000;
+      const token = await signSession(
+        {
+          slug: input.slug,
+          card: card.id,
+          visitor: input.visitorId,
+          source: caller,
+          session: crypto.randomUUID(),
+          expires,
+        },
+        secret,
+      );
+      return new Response(JSON.stringify({ token, expires }), { headers });
+    }
     let referrer: string | null = null;
     if (typeof input.referrer === "string") {
       try {
@@ -99,7 +162,13 @@ Deno.serve(async (request: Request) => {
         { status: error.message.includes("rate limit") ? 429 : 503, headers },
       );
     return new Response(JSON.stringify({ recorded: true }), { headers });
-  } catch {
-    return new Response(null, { status: 400, headers });
+  } catch (error) {
+    return new Response(null, {
+      status:
+        error instanceof Error && error.message === "Body too large"
+          ? 413
+          : 400,
+      headers,
+    });
   }
 });

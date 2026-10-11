@@ -14,6 +14,18 @@ import logo12 from "../assets/mailchimp.png";
 import logo13 from "../assets/make.png";
 import logo14 from "../assets/n8n.png";
 
+import amazonLogo from "../assets/amazon.png";
+import etsyLogo from "../assets/etsy.png";
+import healthgradesLogo from "../assets/healthgrades.png";
+import clutchLogo from "../assets/clutch.png";
+import bookingLogo from "../assets/booking.png";
+import opentableLogo from "../assets/opentable.png";
+import freshaLogo from "../assets/fresha.png";
+import coursereportLogo from "../assets/coursereport.png";
+import houzzLogo from "../assets/houzz.png";
+import viatorLogo from "../assets/viator.png";
+import shopifyLogo from "../assets/shopify.png";
+
 export const brandLogos: Record<string, string> = {
   google: logo0,
   facebook: logo1,
@@ -30,4 +42,15 @@ export const brandLogos: Record<string, string> = {
   mailchimp: logo12,
   make: logo13,
   n8n: logo14,
+  amazon: amazonLogo,
+  etsy: etsyLogo,
+  healthgrades: healthgradesLogo,
+  clutch: clutchLogo,
+  booking: bookingLogo,
+  opentable: opentableLogo,
+  fresha: freshaLogo,
+  "course-report": coursereportLogo,
+  houzz: houzzLogo,
+  viator: viatorLogo,
+  shopify: shopifyLogo,
 };

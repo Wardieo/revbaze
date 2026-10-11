@@ -1,3 +1,4 @@
+import { boundedBody } from "../_shared/tracking.ts";
 import { checkoutReturnPath } from "../_shared/billing-core.ts";
 import {
   appURL,
@@ -37,7 +38,9 @@ Deno.serve(async (request: Request) => {
         origin,
       );
     userId = data.user.id;
-    const input = await request.json();
+    const input = JSON.parse(
+      new TextDecoder().decode(await boundedBody(request, 8192)),
+    );
     const configuredPortal = Deno.env.get("STRIPE_PORTAL_CONFIGURATION_ID");
     const portalOptions: Record<string, string> = configuredPortal
       ? { configuration: configuredPortal }
@@ -215,8 +218,7 @@ Deno.serve(async (request: Request) => {
         lease.checkout_plan === input.plan &&
         previous.success_url === successURL &&
         previous.cancel_url === cancelURL &&
-        previous.metadata?.revbaze_trial_days ===
-          "0"
+        previous.metadata?.revbaze_trial_days === "0"
       ) {
         await rpc(db, "billing_release", { p_user: userId, p_token: token });
         token = undefined;
@@ -262,8 +264,7 @@ Deno.serve(async (request: Request) => {
         pending.metadata?.revbaze_plan === input.plan &&
         pending.success_url === successURL &&
         pending.cancel_url === cancelURL &&
-        pending.metadata?.revbaze_trial_days ===
-          "0"
+        pending.metadata?.revbaze_trial_days === "0"
       ) {
         await rpc(db, "billing_release", {
           p_user: userId,

@@ -1,4 +1,4 @@
-import { validateImage } from "../lib/images";
+import { validateImage, prepareImage } from "../lib/images";
 import { supabase } from "../lib/supabase";
 import { emptyWorkspace } from "../types/workspace";
 import type {
@@ -62,53 +62,51 @@ function assertResult<T>(result: {
   if (result.error) throw new Error(result.error.message);
   return result.data;
 }
-async function loadEvents(businessId: string): Promise<CardEvent[]> {
-  const events: CardEvent[] = [];
-  for (let offset = 0; ; offset += 1000) {
-    const result = await supabase!
-      .rpc("workspace_visitor_events", { p_business_id: businessId })
-      .range(offset, offset + 999);
-    const page = assertResult(result) as CardEvent[];
-    events.push(...page);
-    if (page.length < 1000) {
-      if (!events.length) {
-        const basic = await supabase!.rpc("free_overview_events", {
-          p_business_id: businessId,
-        });
-        if (basic.error && !["PGRST202", "42883"].includes(basic.error.code))
-          assertResult(basic);
-        return basic.data || [];
-      }
-      return events;
-    }
-  }
-}
-export async function loadTimezoneEvents(
+export async function loadOverviewEvents(
   businessId: string,
-  timeZone: string,
 ): Promise<CardEvent[]> {
   if (!supabase) return readLocal().events;
-  if (timeZone === "Asia/Manila") return loadEvents(businessId);
-  const events: CardEvent[] = [];
-  for (let offset = 0; ; offset += 1000) {
-    const result = await supabase
-      .rpc("workspace_timezone_events", {
-        p_business_id: businessId,
-        p_timezone: timeZone,
-      })
-      .range(offset, offset + 999);
-    if (result.error && ["PGRST202", "42883"].includes(result.error.code))
-      throw new Error(
-        "Apply analytics timezone migration 012 to use this timezone.",
-      );
-    const page = assertResult(result) as CardEvent[];
-    events.push(...page);
-    if (page.length < 1000) return events;
-  }
+  return assertResult(
+    await supabase.rpc("workspace_overview_summary", {
+      p_business_id: businessId,
+      p_days: 180,
+    }),
+  ) as CardEvent[];
+}
+export type AnalyticsSummary = {
+  events: CardEvent[];
+  unique: {
+    period: "current" | "previous";
+    scope: "total" | "card" | "source";
+    key: string;
+    count: number;
+  }[];
+  sources: string[];
+};
+export async function loadAnalyticsSummary(
+  businessId: string,
+  from: string,
+  to: string,
+  timeZone: string,
+  card = "",
+  platform = "",
+  source = "",
+): Promise<AnalyticsSummary> {
+  if (!supabase) return { events: readLocal().events, unique: [], sources: [] };
+  return assertResult(
+    await supabase.rpc("analytics_summary", {
+      p_business_id: businessId,
+      p_from: from,
+      p_to: to,
+      p_timezone: timeZone,
+      p_card: card || null,
+      p_platform: platform || null,
+      p_source: source || null,
+    }),
+  ) as AnalyticsSummary;
 }
 export async function loadWorkspace(
   businessId?: string,
-  timeZone = "Asia/Manila",
 ): Promise<WorkspaceData> {
   if (!supabase) return readLocal();
   let request = supabase
@@ -133,7 +131,7 @@ export async function loadWorkspace(
       )
       .eq("business_id", business.id)
       .order("created_at", { ascending: false }),
-    loadTimezoneEvents(business.id, timeZone),
+    Promise.resolve([] as CardEvent[]),
     supabase
       .from("business_activity")
       .select("*")
@@ -217,8 +215,10 @@ export async function saveCard(card: ReviewCard) {
   validateSlug(card.slug);
   validateColor(card.appearance_settings.accent);
   validateColor(card.appearance_settings.background);
-  if (card.appearance_settings.title_color) validateColor(card.appearance_settings.title_color);
-  if (card.appearance_settings.paragraph_color) validateColor(card.appearance_settings.paragraph_color);
+  if (card.appearance_settings.title_color)
+    validateColor(card.appearance_settings.title_color);
+  if (card.appearance_settings.paragraph_color)
+    validateColor(card.appearance_settings.paragraph_color);
   if (!card.name.trim() || !card.headline.trim())
     throw new Error("Card name and heading are required.");
   if (supabase) {
@@ -317,29 +317,36 @@ export async function uploadImage(
     throw new Error(
       "Save your business information before uploading its logo.",
     );
-  const extension = file.type.split("/")[1];
-  const path = `${businessId}/${crypto.randomUUID()}.${extension}`;
-  assertResult(
-    await supabase.storage
-      .from("business-assets")
-      .upload(path, file, { contentType: file.type, upsert: false }),
-  );
-  return supabase.storage.from("business-assets").getPublicUrl(path).data
-    .publicUrl;
+  return uploadManagedImage(file, "business-assets", businessId);
 }
-
+async function uploadManagedImage(
+  file: File,
+  bucket: string,
+  businessId?: string,
+): Promise<string> {
+  const image = await prepareImage(file);
+  const { data, error } = await supabase!.functions.invoke("image-upload", {
+    body: image,
+    headers: {
+      "Content-Type": image.type,
+      "x-image-bucket": bucket,
+      ...(businessId ? { "x-business-id": businessId } : {}),
+    },
+  });
+  if (error) {
+    let message = "Unable to upload image. Please try again.";
+    try {
+      message = (await error.context?.json())?.error || message;
+    } catch {
+      /* Keep a safe fallback. */
+    }
+    throw new Error(message);
+  }
+  if (typeof data?.url !== "string")
+    throw new Error("Unable to complete image upload.");
+  return data.url;
+}
 export async function uploadAccountImage(file: File): Promise<string> {
   if (!supabase) return uploadImage(file);
-  validateImage(file);
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user)
-    throw new Error("Sign in before uploading a profile image.");
-  const path = `${data.user.id}/${crypto.randomUUID()}.${file.type.split("/")[1]}`;
-  assertResult(
-    await supabase.storage
-      .from("profile-assets")
-      .upload(path, file, { contentType: file.type, upsert: false }),
-  );
-  return supabase.storage.from("profile-assets").getPublicUrl(path).data
-    .publicUrl;
+  return uploadManagedImage(file, "profile-assets");
 }

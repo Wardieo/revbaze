@@ -1,3 +1,4 @@
+import { PlatformPicker } from "../../components/shared/PlatformPicker";
 import { usePlan } from "../../hooks/usePlan";
 import {
   AnimatePresence,
@@ -5,8 +6,8 @@ import {
   Reorder,
   useDragControls,
 } from "framer-motion";
-import { GripVertical, ArrowUp, ArrowDown, X, Plus } from "lucide-react";
-import { platforms, getPlatform } from "../../lib/platforms";
+import { GripVertical, ArrowUp, ArrowDown, X } from "lucide-react";
+import { getPlatform } from "../../lib/platforms";
 import { validateDestination } from "../../lib/validation";
 import { PlatformIcon } from "../../components/shared/PlatformIcon";
 import type { ReviewLink } from "../../types/workspace";
@@ -209,31 +210,20 @@ export function PlatformsStep({
           {access.error?.message}
         </p>
       )}
-      <div className="onboard-platform-grid">
-        {platforms.map((p) => (
-          <motion.button
-            key={p.id}
-            type="button"
-            disabled={
-              !access.ready ||
-              (access.plan.linksPerCard !== null &&
-                data.links.length >= access.plan.linksPerCard &&
-                !data.links.some((l) => l.platform_id === p.id))
-            }
-            aria-pressed={data.links.some((l) => l.platform_id === p.id)}
-            onClick={() => select(p.id)}
-            whileHover={{ y: -2 }}
-            whileTap={{ scale: 0.98 }}
-            className={
-              data.links.some((l) => l.platform_id === p.id) ? "selected" : ""
-            }
-          >
-            <PlatformIcon id={p.id} />
-            <span>{p.id === "app-store" ? "Apple App Store" : p.name}</span>
-            <Plus size={13} />
-          </motion.button>
-        ))}
-      </div>
+      <PlatformPicker
+        category={data.business.category}
+        selected={data.links.map((link) => link.platform_id)}
+        onSelect={select}
+        multiple
+        isDisabled={(id) =>
+          !access.ready ||
+          ((data.links.length >= 20 ||
+            (access.plan.linksPerCard !== null &&
+              data.links.length >= access.plan.linksPerCard)) &&
+            (id === "custom" ||
+              !data.links.some((link) => link.platform_id === id)))
+        }
+      />
       <p className="onboard-help">
         {access.plan.linksPerCard !== null &&
           `${access.plan.name} allows ${access.plan.linksPerCard} platform links per card. `}

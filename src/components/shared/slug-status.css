@@ -1,0 +1,26 @@
+.slug-status {
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+.slug-status.available {
+  color: #16a34a;
+}
+.slug-status.checking {
+  color: var(--muted);
+  animation: slug-spin 1s linear infinite;
+}
+.slug-input input,
+.onboard-slug > input {
+  flex: 1;
+  min-width: 0;
+}
+@keyframes slug-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slug-status.checking {
+    animation: none;
+  }
+}

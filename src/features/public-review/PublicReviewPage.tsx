@@ -22,7 +22,9 @@ export function PublicReviewPage() {
       return data as (ReviewCard & { destinations: ReviewLink[] }) | null;
     },
     retry: 1,
-    refetchInterval: 30000,
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+    refetchOnWindowFocus: true,
   });
   const card = query.data;
   const tracked = useRef("");
@@ -33,7 +35,10 @@ export function PublicReviewPage() {
     }
   }, [card, slug]);
   return (
-    <div className="app public-review-shell" style={card ? cardPageBackground(card.appearance_settings) : undefined}>
+    <div
+      className="app public-review-shell"
+      style={card ? cardPageBackground(card.appearance_settings) : undefined}
+    >
       {query.isPending ? (
         <Skeleton />
       ) : query.isError ? (

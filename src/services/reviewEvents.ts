@@ -1,5 +1,34 @@
 import { supabase } from "../lib/supabase";
 let sessionVisitor = "";
+const sessions = new Map<string, { token: string; expires: number }>();
+const pendingSessions = new Map<string, Promise<string | null>>();
+async function trackingToken(
+  slug: string,
+  visitor: string,
+): Promise<string | null> {
+  const cacheKey = `${slug}:${visitor}`;
+  const existing = sessions.get(cacheKey);
+  if (existing && existing.expires > Date.now() + 30_000) return existing.token;
+  const pending = pendingSessions.get(cacheKey);
+  if (pending) return pending;
+  const request = (async () => {
+    try {
+      const { data, error } = await supabase!.functions.invoke(
+        "review-events",
+        { body: { action: "session", slug, visitorId: visitor } },
+      );
+      if (error || typeof data?.token !== "string") return null;
+      sessions.set(cacheKey, data);
+      return data.token as string;
+    } catch {
+      return null;
+    } finally {
+      pendingSessions.delete(cacheKey);
+    }
+  })();
+  pendingSessions.set(cacheKey, request);
+  return request;
+}
 function visitorId() {
   try {
     const stored = localStorage.getItem("revbaze-anonymous-visitor");
@@ -33,13 +62,17 @@ export async function recordReviewEvent(
   } catch {
     referrer = "";
   }
+  const visitor = visitorId();
+  const token = await trackingToken(slug, visitor);
+  if (!token) return;
   const body = {
+    token,
     id: crypto.randomUUID(),
     slug,
     type,
     linkId,
     referrer,
-    visitorId: visitorId(),
+    visitorId: visitor,
     source: /^[a-z0-9][a-z0-9 _.-]{0,79}$/.test(source) ? source : undefined,
   };
   // Retrying with the same event ID is safe: ingress is idempotent.
@@ -49,6 +82,13 @@ export async function recordReviewEvent(
         body,
       });
       if (!error) return;
+      const status = error.context?.status;
+      if (status && status < 500) {
+        if (status === 403) sessions.delete(`${slug}:${visitor}`);
+        return;
+      }
+      if (attempt === 0)
+        await new Promise((resolve) => setTimeout(resolve, 500));
     } catch {
       /* Tracking failure must not interrupt navigation. */
     }

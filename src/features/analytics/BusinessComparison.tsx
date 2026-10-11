@@ -3,8 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useSession } from "../../hooks/useSession";
 import { usePlan } from "../../hooks/usePlan";
 import { supabase } from "../../lib/supabase";
-import { loadWorkspace } from "../../services/workspace";
-import { filterEvents, metrics, uniqueBrowsers } from "../../lib/analytics";
 import { Button } from "../../components/ui/Button";
 
 export function BusinessComparison({
@@ -19,35 +17,41 @@ export function BusinessComparison({
   const access = usePlan();
   const { session } = useSession();
   const query = useQuery({
-    queryKey: ["analytics-business-comparison", session?.user.id, access.plan.id, timeZone],
+    queryKey: [
+      "analytics-business-comparison",
+      session?.user.id,
+      access.plan.id,
+      timeZone,
+      from,
+      to,
+    ],
     enabled: Boolean(
+      from &&
+      to &&
+      from <= to &&
       supabase &&
       session &&
       access.ready &&
       access.plan.analyticsMonths > 0,
     ),
     queryFn: async () => {
-      const { data, error } = await supabase!
-        .from("businesses")
-        .select("id,name")
-        .order("name");
+      const { data, error } = await supabase!.rpc(
+        "business_comparison_summary",
+        { p_from: from, p_to: to, p_timezone: timeZone },
+      );
       if (error) throw error;
-      const rows = [];
-      // Bound concurrent requests for accounts with many locations.
-      for (const business of data || []) {
-        const workspace = await loadWorkspace(business.id, timeZone);
-        rows.push({
-          id: business.id,
-          name: business.name,
-          events: workspace.events,
-        });
-      }
-      return rows;
+      return data as {
+        id: string;
+        name: string;
+        views: number;
+        clicks: number;
+        visitors: number;
+        ctr: number;
+      }[];
     },
     refetchInterval: 60000,
   });
-  if (!access.ready || !access.plan.analyticsMonths || !supabase)
-    return null;
+  if (!access.ready || !access.plan.analyticsMonths || !supabase) return null;
   return (
     <section className="card performance-table">
       <div className="card-heading">
@@ -70,17 +74,7 @@ export function BusinessComparison({
         </div>
       ) : (
         <ComparisonVisual
-          rows={(query.data || [])
-            .map((b) => {
-              const events = filterEvents(b.events, { from, to, timeZone });
-              return {
-                id: b.id,
-                name: b.name,
-                ...metrics(events),
-                visitors: uniqueBrowsers(events),
-              };
-            })
-            .sort((a, b) => b.views - a.views)}
+          rows={[...(query.data || [])].sort((a, b) => b.views - a.views)}
         />
       )}
     </section>

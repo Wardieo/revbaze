@@ -1,3 +1,4 @@
+import { boundedBody } from "../_shared/tracking.ts";
 import { entitlement, verifySignature } from "../_shared/billing-core.ts";
 import {
   configuration,
@@ -21,7 +22,7 @@ Deno.serve(async (request: Request) => {
     return response({ error: "Method not allowed" }, 405);
   let event;
   try {
-    const body = await request.text();
+    const body = new TextDecoder().decode(await boundedBody(request, 262144));
     await verifySignature(
       body,
       request.headers.get("Stripe-Signature") ?? "",

@@ -68,7 +68,13 @@ assert.equal(
   }),
   false,
 );
-assert.deepEqual(invalidations, [{ queryKey: ["account-plan"] }]);
+assert.deepEqual(invalidations, [
+  { queryKey: ["account-plan"] },
+  { queryKey: ["card-performance"] },
+  { queryKey: ["overview-summary"] },
+  { queryKey: ["analytics-summary"] },
+  { queryKey: ["analytics-business-comparison"] },
+]);
 const late = useWorkspace.getState().mutate(async () => {});
 await new Promise((resolve) => setTimeout(resolve, 0));
 useWorkspace

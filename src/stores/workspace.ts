@@ -44,6 +44,13 @@ export const useWorkspace = create<
         );
       }
       void queryClient.invalidateQueries({ queryKey: ["account-plan"] });
+      for (const key of [
+        "card-performance",
+        "overview-summary",
+        "analytics-summary",
+        "analytics-business-comparison",
+      ])
+        void queryClient.invalidateQueries({ queryKey: [key] });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to save your changes.";

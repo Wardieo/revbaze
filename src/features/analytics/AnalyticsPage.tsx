@@ -1,8 +1,9 @@
+import { supabase } from "../../lib/supabase";
 import { BrandLogo } from "../../components/shared/BrandLogo";
 import "./analytics-upgrades.css";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "../../hooks/useSession";
-import { loadTimezoneEvents } from "../../services/workspace";
+import { loadAnalyticsSummary } from "../../services/workspace";
 import { ComparisonVisual } from "./ComparisonVisual";
 import { BusinessComparison } from "./BusinessComparison";
 import { TrafficSources } from "./TrafficSources";
@@ -76,14 +77,6 @@ export function AnalyticsPage() {
       ]),
     ]),
   ].sort();
-  const timezoneQuery = useQuery({
-    queryKey: ["analytics-timezone", session?.user.id, business?.id, timeZone],
-    enabled: Boolean(business && timeZone !== "Asia/Manila"),
-    queryFn: () => loadTimezoneEvents(business!.id, timeZone),
-    refetchInterval: 30000,
-  });
-  const events =
-    timeZone === "Asia/Manila" ? workspaceEvents : timezoneQuery.data || [];
   const card = params.get("card") || "";
   const setCard = (id: string) =>
     setParams((previous) => {
@@ -95,9 +88,9 @@ export function AnalyticsPage() {
   const [reportNow] = useState(() => new Date());
   const today = analyticsDay(reportNow, timeZone);
   const [source, setSource] = useState("");
-  const sourceName = (event: (typeof events)[number]) =>
+  const sourceName = (event: (typeof workspaceEvents)[number]) =>
     event.traffic_source || event.referrer || "Direct / unknown";
-  const sourceMatches = (items: typeof events) =>
+  const sourceMatches = (items: typeof workspaceEvents) =>
     source ? items.filter((e) => sourceName(e) === source) : items;
   const [platform, setPlatform] = useState("");
   const [days, setDays] = useState("30");
@@ -106,7 +99,7 @@ export function AnalyticsPage() {
   const selectedCard = cards.some((c) => c.id === card) ? card : "";
   const selectedPlatform =
     links.some((l) => l.platform_id === platform) ||
-    events.some((e) => e.platform_id === platform)
+    platforms.some((p) => p.id === platform)
       ? platform
       : "";
   const dateError =
@@ -120,6 +113,41 @@ export function AnalyticsPage() {
   const chartFrom =
     days === "custom" ? from : rangeStart.toISOString().slice(0, 10);
   const chartTo = days === "custom" ? to : today;
+  const timezoneQuery = useQuery({
+    queryKey: [
+      "analytics-summary",
+      session?.user.id,
+      business?.id,
+      timeZone,
+      chartFrom,
+      chartTo,
+      selectedCard,
+      selectedPlatform,
+      source,
+    ],
+    enabled: Boolean(supabase && session && business && !dateError),
+    queryFn: () =>
+      loadAnalyticsSummary(
+        business!.id,
+        chartFrom,
+        chartTo,
+        timeZone,
+        selectedCard,
+        selectedPlatform,
+        source,
+      ),
+    refetchInterval: 30_000,
+  });
+  const events = supabase ? timezoneQuery.data?.events || [] : workspaceEvents;
+  const uniqueCount = (
+    period: "current" | "previous",
+    scope: "total" | "card" | "source" = "total",
+    key = "",
+  ) =>
+    timezoneQuery.data?.unique.find(
+      (item) =>
+        item.period === period && item.scope === scope && item.key === key,
+    )?.count || 0;
   const filtered = sourceMatches(
     dateError
       ? []
@@ -134,7 +162,7 @@ export function AnalyticsPage() {
         }),
   );
   const stats = metrics(filtered);
-  const uniqueVisitors = uniqueBrowsers;
+
   const previousRange = previousAnalyticsRange(chartFrom, chartTo);
   const previousEvents = sourceMatches(
     dateError || !previousRange
@@ -203,7 +231,7 @@ export function AnalyticsPage() {
         .map((c) => {
           const m = metrics(filtered.filter((e) => e.review_card_id === c.id));
           const name = /^[=+@\-\t\r]/.test(c.name) ? "'" + c.name : c.name;
-          return `"${chartFrom}","${chartTo}","${name.replaceAll('"', '""')}",${uniqueVisitors(filtered.filter((e) => e.review_card_id === c.id))},${m.views},${m.clicks},${m.ctr.toFixed(2)}%`;
+          return `"${chartFrom}","${chartTo}","${name.replaceAll('"', '""')}",${supabase ? uniqueCount("current", "card", c.id) : uniqueBrowsers(filtered.filter((e) => e.review_card_id === c.id))},${m.views},${m.clicks},${m.ctr.toFixed(2)}%`;
         })
         .join("\n");
     const cell = (value: string) =>
@@ -222,7 +250,7 @@ export function AnalyticsPage() {
         .map(([name, views]) => {
           const items = filtered.filter((e) => sourceName(e) === name);
           const clicks = metrics(items).clicks;
-          return `${cell(name)},${uniqueBrowsers(items)},${views},${clicks},${((clicks / views) * 100).toFixed(1)}%`;
+          return `${cell(name)},${supabase ? uniqueCount("current", "source", name) : uniqueBrowsers(items)},${views},${clicks},${((clicks / views) * 100).toFixed(1)}%`;
         })
         .join("\n");
     const url = URL.createObjectURL(
@@ -273,11 +301,22 @@ export function AnalyticsPage() {
           onChange={(e) => setSource(e.target.value)}
         >
           <option value="">All traffic sources</option>
-          {[...new Set(events.map(sourceName))].sort().map((name) => (
-            <option key={name} value={name}>
-              {name === "qr" ? "QR code" : name}
-            </option>
-          ))}
+          {[
+            ...new Set(
+              supabase
+                ? [
+                    ...(timezoneQuery.data?.sources || []),
+                    ...(source ? [source] : []),
+                  ]
+                : events.map(sourceName),
+            ),
+          ]
+            .sort()
+            .map((name) => (
+              <option key={name} value={name}>
+                {name === "qr" ? "QR code" : name}
+              </option>
+            ))}
         </select>
         <select
           aria-label="Analytics date range"
@@ -357,7 +396,7 @@ export function AnalyticsPage() {
           disabled={
             Boolean(dateError) ||
             !cards.length ||
-            (timeZone !== "Asia/Manila" && !timezoneQuery.isSuccess)
+            (Boolean(supabase) && !timezoneQuery.isSuccess)
           }
         >
           <Download size={16} />
@@ -368,17 +407,17 @@ export function AnalyticsPage() {
           onClick={() => window.print()}
           disabled={
             Boolean(dateError) ||
-            (timeZone !== "Asia/Manila" && !timezoneQuery.isSuccess)
+            (Boolean(supabase) && !timezoneQuery.isSuccess)
           }
         >
           <Printer size={16} />
           Print report
         </Button>
       </div>
-      {timeZone !== "Asia/Manila" && timezoneQuery.isPending && (
+      {supabase && timezoneQuery.isPending && (
         <p role="status">Loading activity for {timeZone}…</p>
       )}
-      {timeZone !== "Asia/Manila" && timezoneQuery.isError && (
+      {supabase && timezoneQuery.isError && (
         <div role="alert" className="form-error">
           <p>{timezoneQuery.error.message}</p>
           <Button onClick={() => void timezoneQuery.refetch()}>Retry</Button>
@@ -392,7 +431,7 @@ export function AnalyticsPage() {
           {dateError}
         </p>
       )}
-      {(timeZone === "Asia/Manila" || timezoneQuery.isSuccess) && (
+      {(!supabase || timezoneQuery.isSuccess) && (
         <>
           <div className="stats-grid">
             {[
@@ -405,12 +444,17 @@ export function AnalyticsPage() {
               },
               {
                 label: "Unique visitors",
-                value: uniqueVisitors(filtered).toLocaleString(),
+                value: (supabase
+                  ? uniqueCount("current")
+                  : uniqueBrowsers(filtered)
+                ).toLocaleString(),
                 icon: Users,
                 detail: "Distinct browsers in the selected range",
                 comparison: change(
-                  uniqueVisitors(filtered),
-                  uniqueVisitors(previousEvents),
+                  supabase ? uniqueCount("current") : uniqueBrowsers(filtered),
+                  supabase
+                    ? uniqueCount("previous")
+                    : uniqueBrowsers(previousEvents),
                 ),
               },
               {
@@ -547,7 +591,23 @@ export function AnalyticsPage() {
                 />
               )}
             </section>
-            <TrafficSources sources={referrers} events={filtered} />
+            <TrafficSources
+              sources={referrers}
+              events={filtered}
+              uniqueCounts={
+                supabase
+                  ? Object.fromEntries(
+                      (timezoneQuery.data?.unique || [])
+                        .filter(
+                          (item) =>
+                            item.period === "current" &&
+                            item.scope === "source",
+                        )
+                        .map((item) => [item.key, item.count]),
+                    )
+                  : undefined
+              }
+            />
           </div>
           <div className="analytics-comparison-grid">
             <section className="card performance-table">

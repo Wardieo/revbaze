@@ -1,3 +1,4 @@
+import { businessCategories } from "../../lib/platforms";
 import { useWorkspaceRole } from "../../hooks/useWorkspaceRole";
 import { useState } from "react";
 import { Upload, Check, Building2 } from "lucide-react";
@@ -37,7 +38,12 @@ export function BusinessForm({ onSaved }: { onSaved?: () => void }) {
     setDraft({ ...draft, ...values });
     setError("");
   }
-  if (!permissions.canManageBusiness) return <p className="form-help">Only the owner and admins can edit business settings.</p>;
+  if (!permissions.canManageBusiness)
+    return (
+      <p className="form-help">
+        Only the owner and admins can edit business settings.
+      </p>
+    );
   return (
     <form
       className="stack-form"
@@ -140,15 +146,7 @@ export function BusinessForm({ onSaved }: { onSaved?: () => void }) {
             value={draft.category}
             onChange={(e) => update({ category: e.target.value })}
           >
-            {[
-              "Software & technology",
-              "Retail & e-commerce",
-              "Health & wellness",
-              "Professional services",
-              "Hospitality",
-              "Food & beverage",
-              "Other",
-            ].map((c) => (
+            {businessCategories.map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>
