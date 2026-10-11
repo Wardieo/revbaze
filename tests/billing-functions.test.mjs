@@ -36,9 +36,8 @@ host.resolveModuleNames = (names, file) =>
 const program = ts.createProgram(
   [
     "supabase/functions/billing/index.ts",
-    "supabase/functions/billing-renewals/index.ts",
     "supabase/functions/review-events/index.ts",
-    "supabase/functions/paymongo-webhook/index.ts",
+    "supabase/functions/stripe-webhook/index.ts",
     "supabase/functions/image-upload/index.ts",
     "supabase/functions/asset-cleanup/index.ts",
     virtualFile,
@@ -61,473 +60,421 @@ const compile = (s) =>
   }).outputText;
 const uri = (s) =>
   "data:text/javascript;base64," + Buffer.from(compile(s)).toString("base64");
-const core = uri(
-  await readFile("supabase/functions/_shared/billing-core.ts", "utf8"),
-);
 const tracking = uri(
   await readFile("supabase/functions/_shared/tracking.ts", "utf8"),
+);
+const core = uri(
+  await readFile("supabase/functions/_shared/billing-core.ts", "utf8"),
 );
 const env = {
   APP_URL: "https://app.example.com",
   SUPABASE_URL: "https://db.example.com",
-  SUPABASE_SERVICE_ROLE_KEY: "test",
-  PAYMONGO_SECRET_KEY: "sk_test_fixture",
-  PAYMONGO_PUBLIC_KEY: "pk_test_fixture",
-  PAYMONGO_WEBHOOK_SECRET: "fixture-secret",
+  SUPABASE_SERVICE_ROLE_KEY: "server-test",
+  STRIPE_SECRET_KEY: "sk_test_local_fixture",
+  STRIPE_WEBHOOK_SECRET: "local-webhook-secret",
+  STRIPE_GROWTH_PRICE_ID: "prod_growth",
+  STRIPE_PRO_PRICE_ID: "prod_pro",
 };
-let prior = null;
-let row = { user_id: "owner", paymongo_customer_id: "cus_owner" },
+let customer = null,
+  checkout = null,
   lease = null,
+  plan = "free",
   applied = 0,
-  items = [],
-  quote = null,
-  apiCalls = 0;
-const processed = new Set();
-const db = {
+  stripeCalls = 0,
+  checkoutCreates = 0,
+  active = [];
+const user = { id: "owner-uuid", email: "owner@example.com" };
+const query = () => {
+  const q = {
+    select: () => q,
+    eq: () => q,
+    maybeSingle: async () => ({ data: customer, error: null }),
+    single: async () => ({ data: customer, error: null }),
+    upsert: async (row) => {
+      customer ??= row;
+      return { error: null };
+    },
+  };
+  return q;
+};
+globalThis.__createClient = () => ({
   auth: {
-    getUser: async (token) => ({
-      data: {
-        user:
-          token === "valid"
-            ? { id: "owner", email: "owner@example.com", user_metadata: {} }
-            : null,
-      },
-    }),
+    getUser: async (token) =>
+      token === "valid-token"
+        ? { data: { user }, error: null }
+        : { data: { user: null }, error: new Error("Invalid") },
   },
-  from(table) {
-    let changes,
-      filters = {};
-    const q = {
-      select: () => q,
-      eq: (k, v) => {
-        filters[k] = v;
-        return q;
-      },
-      update: (v) => {
-        changes = v;
-        return q;
-      },
-      upsert: () => q,
-      single: async () => ({
-        data:
-          table === "billing_customers"
-            ? row
-            : table === "billing_fx_rates"
-              ? { rate: 57, source_updated_at: new Date().toISOString() }
-              : quote,
-      }),
-      maybeSingle: async () => ({
-        data:
-          table === "billing_customers"
-            ? row
-            : table === "billing_fx_rates"
-              ? { rate: 57, source_updated_at: new Date().toISOString() }
-              : table === "billing_quotes"
-                ? quote
-                : table === "account_plans"
-                  ? prior
-                  : null,
-      }),
-      then(resolve) {
-        if (changes) Object.assign(row, changes);
-        resolve({ data: null, error: null });
-      },
-    };
-    return q;
-  },
+  from: query,
   rpc: async (name, args) => {
     if (name === "billing_claim") {
-      if (processed.has(args.p_event)) return { data: { processed: true } };
-      if (lease) return { data: { busy: true } };
-      lease = "lease";
-      return { data: { token: lease } };
+      lease = "00000000-0000-4000-8000-000000000001";
+      return {
+        data: {
+          token: lease,
+          checkout: checkout?.id,
+          checkout_plan: checkout?.metadata?.revbaze_plan,
+        },
+      };
     }
     if (name === "billing_release") {
       lease = null;
-      return { data: null };
+      return { data: null, error: null };
     }
     if (name === "billing_apply") {
-      prior = { plan: args.p_plan, expires_at: args.p_period_end };
+      assert.equal(args.p_token, lease);
+      plan = args.p_plan;
       applied++;
-      processed.add(args.p_event);
       lease = null;
-      return { data: null };
+      return { error: null };
     }
-    if (name === "billing_quote_claim") {
-      assert.equal(args.p_php, 57000);
-      assert.equal(args.p_usd, 1000);
-      assert.equal(args.p_live, false);
-    }
-    if (name === "billing_quote_claim")
-      return { data: { provider_plan_id: "plan_growth" } };
-    throw new Error(name);
+    throw new Error("Unexpected RPC");
   },
-};
-globalThis.__billingdb = db;
-let handler;
+});
 globalThis.Deno = {
-  env: { get: (k) => env[k] },
-  serve: (fn) => {
-    handler = fn;
+  env: { get: (n) => env[n] },
+  serve: (handler) => {
+    globalThis.__handler = handler;
   },
 };
 const runtime = uri(
   (await readFile("supabase/functions/_shared/billing-runtime.ts", "utf8"))
     .replace(
-      'import { createClient } from "npm:@supabase/supabase-js@2.109.0";',
-      "const createClient=()=>globalThis.__billingdb;",
+      /import \{ createClient \} from ['"]npm:@supabase\/supabase-js@2\.109\.0['"];/,
+      "const createClient=globalThis.__createClient;",
     )
-    .replace('"./billing-core.ts"', JSON.stringify(core)),
+    .replace(/['"]\.\/billing-core\.ts['"]/, JSON.stringify(core)),
 );
-async function load(file) {
+const handlers = async (path) => {
+  const source = (await readFile(path, "utf8"))
+    .replace(
+      /['"]\.\.\/_shared\/billing-runtime\.ts['"]/,
+      JSON.stringify(runtime),
+    )
+    .replace(/['"]\.\.\/_shared\/billing-core\.ts['"]/, JSON.stringify(core));
   await import(
     uri(
-      (await readFile(file, "utf8"))
-        .replace('"../_shared/tracking.ts"', JSON.stringify(tracking))
-        .replace('"../_shared/billing-core.ts"', JSON.stringify(core))
-        .replace('"../_shared/billing-runtime.ts"', JSON.stringify(runtime)),
+      source.replace(
+        /['"]\.\.\/_shared\/tracking\.ts['"]/,
+        JSON.stringify(tracking),
+      ),
     )
   );
-  return handler;
-}
-const billing = await load("supabase/functions/billing/index.ts"),
-  webhook = await load("supabase/functions/paymongo-webhook/index.ts");
-globalThis.fetch = async (url, options) => {
-  apiCalls++;
-  let data;
-  if (url.includes("subscriptions?")) data = items;
-  else if (url.endsWith("/subscriptions") && options.method === "POST")
-    data = {
-      id: "subs_one",
-      attributes: {
-        plan: { id: "plan_growth" },
-        status: "incomplete",
-        latest_invoice: { payment_intent: { id: "pi_one" } },
-      },
-    };
-  else if (url.endsWith("/payment_intents/pi_one"))
-    data = {
-      id: "pi_one",
-      attributes: {
-        client_key: "pi_client",
-        amount: 57000,
-        currency: "PHP",
-        payment_method_allowed: ["card", "paymaya"],
-      },
-    };
-  else if (url.endsWith("/subscriptions/subs_one")) {
-    if (options.method === "DELETE") items[0].attributes.status = "cancelled";
-    data = items[0];
-  } else throw new Error(url);
-  return new Response(JSON.stringify({ data }), { status: 200 });
+  return globalThis.__handler;
 };
-const request = (action, auth = "valid", origin = "https://app.example.com") =>
+const billing = await handlers("supabase/functions/billing/index.ts");
+const webhook = await handlers("supabase/functions/stripe-webhook/index.ts");
+const price = {
+  id: "price_growth",
+  product: "prod_growth",
+  active: true,
+  currency: "usd",
+  unit_amount: 1000,
+  recurring: { interval: "month", interval_count: 1 },
+};
+globalThis.fetch = async (url, options) => {
+  stripeCalls++;
+  assert(url.startsWith("https://api.stripe.com/v1/"));
+  assert.equal(options.headers.Authorization, "Bearer sk_test_local_fixture");
+  const path = url.split("/v1/")[1];
+  let value;
+  if (path.startsWith("prices?"))
+    value = {
+      data: [
+        path.includes("prod_pro")
+          ? {
+              ...price,
+              id: "price_pro",
+              product: "prod_pro",
+              unit_amount: 2900,
+            }
+          : price,
+      ],
+      has_more: false,
+    };
+  else if (path === "billing_portal/configurations/bpc_test")
+    value = {
+      active: true,
+      features: {
+        subscription_update: {
+          enabled: true,
+          proration_behavior: "always_invoice",
+        },
+      },
+    };
+  else if (path.startsWith("billing_portal/configurations?"))
+    value = {
+      data: [
+        {
+          is_default: true,
+          features: {
+            subscription_update: { proration_behavior: "always_invoice" },
+          },
+        },
+      ],
+    };
+  else if (path === "customers" || path === "customers/cus_fixture") {
+    const body = new URLSearchParams(options.body);
+    assert.equal(body.get("email"), user.email);
+    value = { id: "cus_fixture", email: user.email };
+  } else if (path.startsWith("subscriptions?"))
+    value = { data: active, has_more: false };
+  else if (path.startsWith("checkout/sessions?"))
+    value = { data: checkout ? [checkout] : [], has_more: false };
+  else if (path === "checkout/sessions") {
+    checkoutCreates++;
+    const body = new URLSearchParams(options.body);
+    assert.equal(body.get("mode"), "subscription");
+    assert.equal(body.get("ui_mode"), "hosted");
+    assert.equal(body.get("payment_method_collection"), "always");
+    assert.equal(body.get("subscription_data[trial_period_days]"), null);
+    assert.equal(
+      body.get(
+        "subscription_data[trial_settings][end_behavior][missing_payment_method]",
+      ),
+      null,
+    );
+    assert.equal(body.get("metadata[revbaze_trial_days]"), "0");
+    const target = body.get("metadata[revbaze_plan]");
+    assert.equal(
+      body.get("line_items[0][price]"),
+      target === "pro" ? "price_pro" : "price_growth",
+    );
+    assert.equal(
+      body.get("success_url"),
+      `https://app.example.com/#/checkout?result=success&plan=${target}&returnTo=%2Fupgrade`,
+    );
+    checkout = {
+      id: "cs_fixture",
+      status: "open",
+      success_url: body.get("success_url"),
+      cancel_url: body.get("cancel_url"),
+      url: "https://checkout.stripe.com/test",
+      client_reference_id: user.id,
+      metadata: {
+        revbaze_plan: target,
+        revbaze_trial_days: body.get("metadata[revbaze_trial_days]"),
+      },
+    };
+    value = checkout;
+  } else if (path === "checkout/sessions/cs_fixture") value = checkout;
+  else if (path === "checkout/sessions/cs_fixture/expire") {
+    checkout.status = "expired";
+    value = checkout;
+  } else if (path === "billing_portal/sessions") {
+    const body = new URLSearchParams(options.body);
+    if (env.STRIPE_PORTAL_CONFIGURATION_ID)
+      assert.equal(
+        body.get("configuration"),
+        env.STRIPE_PORTAL_CONFIGURATION_ID,
+      );
+    if (body.has("flow_data[type]")) {
+      assert.equal(body.get("flow_data[type]"), "subscription_update_confirm");
+      assert.equal(
+        body.get("flow_data[subscription_update_confirm][subscription]"),
+        "sub_test",
+      );
+      assert.equal(
+        body.get("flow_data[subscription_update_confirm][items][0][price]"),
+        "price_pro",
+      );
+      assert.equal(
+        body.get("flow_data[subscription_update_confirm][items][0][id]"),
+        "si_test",
+      );
+    }
+    value = { url: "https://billing.stripe.com/test" };
+  } else throw new Error("Unexpected Stripe request " + path);
+  return new Response(JSON.stringify(value), {
+    headers: { "Content-Type": "application/json" },
+  });
+};
+const request = (action, extra = {}) =>
   new Request("https://db.example.com/functions/v1/billing", {
     method: "POST",
-    headers: { authorization: `Bearer ${auth}`, origin },
-    body: JSON.stringify({ action, plan: "growth" }),
+    headers: {
+      Authorization: "Bearer valid-token",
+      Origin: env.APP_URL,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ action, ...extra }),
   });
-assert.equal((await billing(request("checkout", "invalid"))).status, 401);
-assert.equal(apiCalls, 0);
-assert.equal(
-  (await billing(request("checkout", "valid", "https://evil.example"))).status,
-  403,
+let result = await billing(
+  new Request("https://db.example.com/functions/v1/billing", {
+    method: "POST",
+    body: "{}",
+  }),
 );
-assert.equal(apiCalls, 0);
-let result = await billing(request("checkout"));
+assert.equal(result.status, 401);
+assert.equal(stripeCalls, 0);
+result = await billing(
+  new Request("https://db.example.com/functions/v1/billing", {
+    method: "POST",
+    headers: { Origin: "https://attacker.example" },
+    body: "{}",
+  }),
+);
+assert.equal(result.status, 403);
+result = await billing(request("checkout", { plan: "free" }));
+assert.equal(result.status, 400);
+assert.equal(stripeCalls, 0);
+result = await billing(
+  request("checkout", {
+    plan: "growth",
+    price: "attacker_price",
+    user_id: "attacker",
+    success_url: "https://attacker.example",
+  }),
+);
 assert.equal(result.status, 200);
-assert.equal((await result.json()).payment.amount, 57000);
-assert.equal(row.subscription_id, "subs_one");
-lease = "busy";
-assert.equal((await billing(request("checkout"))).status, 409);
-lease = null;
-items = [
+assert.equal((await result.json()).url, "https://checkout.stripe.com/test");
+assert.equal(plan, "free");
+result = await billing(request("checkout", { plan: "growth" }));
+assert.equal(result.status, 200);
+assert.equal(checkoutCreates, 1);
+// Old trial checkout must be replaced before it can be reused.
+checkout.metadata.revbaze_trial_days = "14";
+result = await billing(request("checkout", { plan: "growth" }));
+assert.equal(result.status, 200);
+assert.equal(checkoutCreates, 2);
+assert.equal(checkout.metadata.revbaze_trial_days, "0");
+active = [
   {
-    id: "subs_one",
-    attributes: {
-      status: "active",
-      livemode: false,
-      customer_id: "cus_owner",
-      plan: {
-        id: "plan_growth",
-        amount: 57000,
-        currency: "PHP",
-        interval: "month",
-        interval_count: 1,
-      },
-      latest_invoice: { status: "paid", amount: 57000, currency: "PHP" },
-      next_billing_schedule: new Date(Date.now() + 86400000).toISOString(),
+    latest_invoice: { status: "paid" },
+    id: "sub_test",
+    status: "active",
+    items: {
+      data: [
+        {
+          id: "si_test",
+          quantity: 1,
+          current_period_end: Math.floor(Date.now() / 1000) + 86400,
+          price,
+        },
+      ],
     },
   },
 ];
-quote = {
-  plan: "growth",
-  usd_amount: 1000,
-  php_amount: 57000,
-  livemode: false,
-};
-result = await billing(request("status"));
+result = await billing(request("checkout", { plan: "growth" }));
+assert.equal((await result.json()).url, "https://billing.stripe.com/test");
+assert.equal(checkoutCreates, 2);
+result = await billing(request("checkout", { plan: "pro" }));
 assert.equal(result.status, 200);
-assert.equal(applied, 1);
+assert.equal((await result.json()).url, "https://billing.stripe.com/test");
+assert.equal(checkoutCreates, 2);
+assert.equal(plan, "free", "Opening payment confirmation cannot grant access");
+env.STRIPE_PORTAL_CONFIGURATION_ID = "bpc_test";
+result = await billing(request("checkout", { plan: "pro" }));
 assert.equal(
-  (
-    await webhook(
-      new Request("https://db.example.com/webhook", {
-        method: "POST",
-        body: "{}",
-      }),
-    )
-  ).status,
-  400,
+  result.status,
+  200,
+  "An explicit non-default Revbaze configuration must allow the upgrade",
 );
-const event = JSON.stringify({
+assert.equal((await result.json()).url, "https://billing.stripe.com/test");
+const event = {
+  id: "evt_test",
+  livemode: false,
+  type: "checkout.session.completed",
   data: {
-    id: "evt_one",
-    attributes: {
-      type: "subscription.invoice.paid",
-      livemode: false,
-      data: { attributes: { customer_id: "cus_owner" } },
-    },
+    object: { customer: "cus_fixture", client_reference_id: "attacker" },
   },
-});
-const stamp = Math.floor(Date.now() / 1000);
+};
+const payload = JSON.stringify(event);
+const timestamp = Math.floor(Date.now() / 1000);
 const key = await crypto.subtle.importKey(
   "raw",
-  new TextEncoder().encode(env.PAYMONGO_WEBHOOK_SECRET),
+  new TextEncoder().encode(env.STRIPE_WEBHOOK_SECRET),
   { name: "HMAC", hash: "SHA-256" },
   false,
   ["sign"],
 );
-const sig = Buffer.from(
+const signature = Buffer.from(
   await crypto.subtle.sign(
     "HMAC",
     key,
-    new TextEncoder().encode(`${stamp}.${event}`),
+    new TextEncoder().encode(`${timestamp}.${payload}`),
   ),
 ).toString("hex");
-const hook = () =>
-  new Request("https://db.example.com/webhook", {
+result = await webhook(
+  new Request("https://db.example.com/functions/v1/stripe-webhook", {
     method: "POST",
-    headers: { "Paymongo-Signature": `t=${stamp},te=${sig},li=` },
-    body: event,
-  });
-assert.equal((await webhook(hook())).status, 200);
-const before = applied;
-assert.equal((await webhook(hook())).status, 200);
-assert.equal(applied, before);
-console.log(
-  "PASS: deployable function types, PayMongo authentication/origin checks, payment setup, leases, private quote validation, raw webhook signatures and replay protection.",
+    body: payload,
+  }),
 );
-
-result = await billing(request("cancel"));
+assert.equal(result.status, 400);
+assert.equal(applied, 0);
+result = await webhook(
+  new Request("https://db.example.com/functions/v1/stripe-webhook", {
+    method: "POST",
+    headers: { "Stripe-Signature": `t=${timestamp},v1=${signature}` },
+    body: payload,
+  }),
+);
 assert.equal(result.status, 200);
-assert.equal(prior.plan, "growth", "cancellation preserves the paid period");
-assert.equal((await billing(request("status"))).status, 200);
-assert.equal(prior.plan, "growth");
-
-const { billingErrorMessage } = await import(
-  uri(await readFile("src/lib/billingErrors.ts", "utf8"))
-);
-assert.equal(
-  await billingErrorMessage({
-    context: new Response(JSON.stringify({ message: "Invalid JWT" }), {
-      status: 401,
-    }),
-  }),
-  "Invalid JWT",
-);
-assert.equal(
-  await billingErrorMessage({
-    context: new Response(
-      JSON.stringify({
-        error: "Billing setup is incomplete: PAYMONGO_SECRET_KEY",
-      }),
-      { status: 503 },
-    ),
-  }),
-  "Billing setup is incomplete: PAYMONGO_SECRET_KEY",
-);
-assert.match(
-  await billingErrorMessage({ context: new Response("", { status: 404 }) }),
-  /not deployed/,
-);
-assert.match(
-  await billingErrorMessage({ name: "FunctionsFetchError" }),
-  /APP_URL/,
-);
-assert.match(
-  await billingErrorMessage({
-    context: new Response("Bad gateway", { status: 502 }),
-  }),
-  /HTTP 502/,
-);
-console.log(
-  "PASS: checkout preserves function/gateway errors and identifies network/deployment failures.",
-);
-
-const preflight = await billing(
-  new Request("https://db.example.com/functions/v1/billing", {
-    method: "OPTIONS",
-    headers: {
-      origin: "https://preview.example.com",
-      "Access-Control-Request-Method": "POST",
-      "Access-Control-Request-Headers":
-        "authorization,apikey,content-type,x-client-info",
-    },
+assert.equal(plan, "growth");
+assert.equal(applied, 1);
+// Delayed checkout events reconcile today's cancelled state, never the event's old state.
+active = [];
+result = await webhook(
+  new Request("https://db.example.com/functions/v1/stripe-webhook", {
+    method: "POST",
+    headers: { "Stripe-Signature": `t=${timestamp},v1=${signature}` },
+    body: payload,
   }),
 );
-assert.equal(preflight.status, 200);
+assert.equal(result.status, 200);
+assert.equal(plan, "free");
+// A Free account selecting Pro must get payment checkout, not a dashboard URL.
+checkout = null;
+result = await billing(request("checkout", { plan: "pro" }));
+assert.equal(result.status, 200);
+assert.equal((await result.json()).url, "https://checkout.stripe.com/test");
+assert.equal(plan, "free");
+assert.equal(checkout.metadata.revbaze_plan, "pro");
+checkout.cancel_url = "https://app.example.com/#/upgrade?checkout=cancelled";
+const beforeReplace = checkoutCreates;
+result = await billing(request("checkout", { plan: "pro" }));
+assert.equal(result.status, 200);
 assert.equal(
-  preflight.headers.get("access-control-allow-origin"),
-  "https://preview.example.com",
+  checkoutCreates,
+  beforeReplace + 1,
+  "A pending session with stale return URLs must be replaced",
 );
-const rejected = await billing(
-  request("checkout", "valid", "https://preview.example.com"),
-);
-assert.equal(rejected.status, 403);
-assert.equal(
-  rejected.headers.get("access-control-allow-origin"),
-  "https://preview.example.com",
-);
-assert.match((await rejected.json()).error, /APP_URL/);
-env.BILLING_ALLOWED_ORIGINS = "https://preview.example.com";
-assert.equal(
-  (await billing(request("status", "valid", "https://preview.example.com")))
-    .status,
-  200,
-);
-delete env.BILLING_ALLOWED_ORIGINS;
-console.log(
-  "PASS: preflight succeeds, unauthorized origins receive readable errors, and explicit extra origins are accepted.",
-);
-
-const originalFetch = globalThis.fetch,
-  originalAuth = db.auth.getUser;
-db.auth.getUser = async () => ({
-  data: {
-    user: {
-      id: "owner",
-      email: "owner@example.com",
-      user_metadata: { name: "Edward Mosquera" },
-    },
-  },
-});
-row.paymongo_customer_id = null;
-items = [];
-globalThis.fetch = async (url, options) => {
-  if (url.endsWith("/customers")) {
-    const attrs = JSON.parse(options.body).data.attributes;
-    assert.equal(attrs.first_name, "Edward");
-    assert.equal(attrs.last_name, "Mosquera");
-    assert.equal(attrs.default_device, "email");
-    return new Response(JSON.stringify({ data: { id: "cus_owner" } }), {
-      status: 200,
-    });
-  }
-  return originalFetch(url, options);
-};
-assert.equal((await billing(request("checkout"))).status, 200);
-// Signup permits a single name; PayMongo still requires a nonempty surname.
-db.auth.getUser = async () => ({
-  data: {
-    user: {
-      id: "owner",
-      email: "owner@example.com",
-      user_metadata: { name: "Edward" },
-    },
-  },
-});
-row.paymongo_customer_id = null;
-items = [];
-globalThis.fetch = async (url, options) => {
-  if (url.endsWith("/customers")) {
-    const attrs = JSON.parse(options.body).data.attributes;
-    assert.equal(attrs.first_name, "Edward");
-    assert.equal(attrs.last_name, "Customer");
-    assert.equal(attrs.default_device, "email");
-    return new Response(JSON.stringify({ data: { id: "cus_owner" } }), {
-      status: 200,
-    });
-  }
-  return originalFetch(url, options);
-};
-assert.equal((await billing(request("checkout"))).status, 200);
-db.auth.getUser = originalAuth;
-const runtimeExports = await import(runtime),
-  oldRPC = db.rpc,
-  oldFrom = db.from;
-db.rpc = async (name, args) =>
-  name === "billing_quote_claim"
-    ? { data: { token: "quote-token", php_amount: 57000 } }
-    : oldRPC(name, args);
-db.from = (table) => {
-  if (table !== "billing_quotes") return oldFrom(table);
-  const q = {
-    update: () => q,
-    eq: () => q,
-    select: () => q,
-    single: async () => ({
-      data: { provider_plan_id: "plan_generated" },
-      error: null,
-    }),
-  };
-  return q;
-};
-globalThis.fetch = async (url, options) => {
-  assert(url.endsWith("/subscriptions/plans"));
-  const attrs = JSON.parse(options.body).data.attributes;
-  assert.equal(attrs.interval, "monthly");
-  assert.equal(attrs.interval_count, 1);
-  assert.equal(attrs.currency, "PHP");
-  assert.equal(attrs.amount, 57000);
-  return new Response(JSON.stringify({ data: { id: "plan_generated" } }), {
-    status: 200,
-  });
-};
-assert.equal(await runtimeExports.resolvePlan("growth"), "plan_generated");
-db.rpc = oldRPC;
-db.from = oldFrom;
-const logs = [],
-  originalConsole = console.error;
-console.error = (...args) => logs.push(args);
-globalThis.fetch = async () =>
-  new Response(
-    JSON.stringify({
-      errors: [
+assert(checkout.cancel_url.includes("/#/checkout?result=cancelled"));
+active = [
+  {
+    id: "sub_pro",
+    status: "active",
+    latest_invoice: { status: "open" },
+    items: {
+      data: [
         {
-          code: "invalid_request_body",
-          source: { attribute: "last_name" },
-          detail: "DO_NOT_LOG_CUSTOMER_VALUE",
+          id: "si_pro",
+          quantity: 1,
+          current_period_end: Math.floor(Date.now() / 1000) + 86400,
+          price: {
+            ...price,
+            id: "price_pro",
+            product: "prod_pro",
+            unit_amount: 2900,
+          },
         },
       ],
+    },
+  },
+];
+const deliver = () =>
+  webhook(
+    new Request("https://db.example.com/functions/v1/stripe-webhook", {
+      method: "POST",
+      headers: { "Stripe-Signature": `t=${timestamp},v1=${signature}` },
+      body: payload,
     }),
-    { status: 400 },
   );
-await assert.rejects(
-  runtimeExports.paymongo("customers", {}),
-  /POST customers.*last_name/,
-);
-assert(!JSON.stringify(logs).includes("DO_NOT_LOG_CUSTOMER_VALUE"));
-assert(JSON.stringify(logs).includes("fields=last_name"));
-globalThis.fetch = async () =>
-  new Response(
-    JSON.stringify({
-      errors: [
-        {
-          code: "merchant_invalid_state",
-          detail:
-            "no subscription payment methods are configured for this organization",
-        },
-      ],
-    }),
-    { status: 400 },
-  );
-await assert.rejects(
-  runtimeExports.paymongo("subscriptions/plans", {}),
-  /Ask PayMongo support to enable Subscriptions/,
-);
-console.error = originalConsole;
-globalThis.fetch = originalFetch;
+assert.equal((await deliver()).status, 200);
+assert.equal(plan, "free", "Unpaid Pro invoice cannot unlock Pro");
+active[0].latest_invoice.status = "paid";
+assert.equal((await deliver()).status, 200);
+assert.equal(plan, "pro");
 console.log(
-  "PASS: customer first/last names, PayMongo monthly plan enum, and safe operation/field validation diagnostics.",
+  "Billing handler tests passed: authentication, origin, server price selection, session reuse, duplicate-subscription prevention, portal, signed webhook, fresh reconciliation.",
 );

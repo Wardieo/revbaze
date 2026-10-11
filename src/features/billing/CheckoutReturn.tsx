@@ -87,7 +87,7 @@ export function CheckoutReturn() {
               ? "Your plan hasn’t changed. Returning to your previous screen."
               : !validPlan
                 ? "Choose Growth or Pro to start a secure checkout."
-                : "We’re waiting for verified subscription access from PayMongo. This can take a moment."}
+                : "We’re waiting for verified subscription access from Stripe. This can take a moment."}
         </p>
         {confirmed && (
           <>

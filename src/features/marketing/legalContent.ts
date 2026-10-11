@@ -27,7 +27,7 @@ export const privacySections: LegalSection[] = [
       "Business and card information: business identity and branding, category and website where supplied, card names and public slugs, invitation text, appearance settings, platform URLs, publication settings, and onboarding drafts.",
       "Workspace records: ownership or membership, changes to business content, plan status, saved integration destinations and selected event types.",
       "Review-card activity: page views and outbound clicks, event time, relevant card and destination, referrer hostname, a supplied sharing-source tag, and a business-scoped browser identifier.",
-      "Billing records: PayMongo customer and subscription identifiers, checkout and subscription state, billing period end, cancellation state, and processed billing-event identifiers.",
+      "Billing records: Stripe customer and subscription identifiers, checkout and subscription state, billing period end, cancellation state, and processed billing-event identifiers.",
       "Contact information: your name, email, selected topic, message, submission time, and rate-limit records. Contact abuse prevention uses a hashed source address rather than retaining a raw IP address in the contact tables.",
     ],
   },
@@ -37,7 +37,7 @@ export const privacySections: LegalSection[] = [
     paragraphs: [
       "We use account and workspace information to authenticate you, save your work, publish the cards you activate, apply access permissions and plan limits, and provide your selected features.",
       "We use review-card activity to report visits, outbound clicks, traffic sources, and browser-based visitor counts to the business that owns the card. These metrics do not identify verified individual people or prove that a review was posted.",
-      "We use billing records to reconcile subscription access with PayMongo. We use contact submissions to receive and respond to enquiries, and rate-limit records to reduce repeated or abusive submissions. The current contact form saves messages to a private inbox; it does not automatically email them.",
+      "We use billing records to reconcile subscription access with Stripe. We use contact submissions to receive and respond to enquiries, and rate-limit records to reduce repeated or abusive submissions. The current contact form saves messages to a private inbox; it does not automatically email them.",
       "The app currently stores notification preferences, but does not implement product or activity notification delivery. The final operator policy must identify the legal bases relied on for processing in each applicable jurisdiction.",
     ],
   },
@@ -64,7 +64,7 @@ export const privacySections: LegalSection[] = [
     id: "providers",
     title: "Service providers and external destinations",
     paragraphs: [
-      "Supabase provides authentication, database storage, public image storage, and server functions. PayMongo processes subscription payments. Payment details entered during checkout are sent directly to PayMongo; the Revbaze database stores subscription identifiers and state rather than full payment-card details.",
+      "Supabase provides authentication, database storage, public image storage, and server functions. Stripe processes subscription payments. Payment details entered during checkout are sent directly to Stripe; the Revbaze database stores subscription identifiers and state rather than full payment-card details.",
       "The site loads fonts from Google Fonts. Browser requests to font services, hosting infrastructure, and other service providers can include network information such as an IP address and user agent. Infrastructure logging and provider retention settings are separate from the application’s analytics tables.",
       "When you follow a review-platform link, that external platform processes information under its own policies. Revbaze does not collect the review text or rating you submit there through the current review-card implementation.",
       "Integration setup stores the destination URL and selected event types, but automatic event delivery is not enabled by this implementation. Do not treat a saved connection as an active data-sharing workflow.",
@@ -86,7 +86,7 @@ export const privacySections: LegalSection[] = [
     title: "Access, correction, and deletion requests",
     paragraphs: [
       "You can edit your profile and business content in the workspace. Settings → Data lets you download the current workspace’s business, cards, links, and loaded activity. This is not a complete export of all account information, billing records, contact submissions, or provider logs.",
-      "You can delete cards and platform links using their workspace controls. The current dashboard has no self-service account-deletion control. Removing a database record does not necessarily remove associated public images, PayMongo records, backups, or legal recordkeeping obligations.",
+      "You can delete cards and platform links using their workspace controls. The current dashboard has no self-service account-deletion control. Removing a database record does not necessarily remove associated public images, Stripe records, backups, or legal recordkeeping obligations.",
       "Use Contact to request access, correction, deletion, or to raise a privacy concern. Identify the relevant account or card without sending passwords or full payment details. Identity verification may be needed before private information can be disclosed or changed.",
       "Your rights, any restrictions on them, and the relevant complaint authority depend on applicable law. The final notice must identify the responsible operator and the process for responding to those requests.",
     ],
@@ -95,7 +95,7 @@ export const privacySections: LegalSection[] = [
     id: "security",
     title: "Security and limitations",
     paragraphs: [
-      "The implementation uses authenticated workspace permissions, row-level database access controls, server-side validation, private billing and contact tables, verified PayMongo webhooks, and submission limits. Public review cards intentionally expose a limited public projection of card content.",
+      "The implementation uses authenticated workspace permissions, row-level database access controls, server-side validation, private billing and contact tables, verified Stripe webhooks, and submission limits. Public review cards intentionally expose a limited public projection of card content.",
       "These measures reduce risk but do not guarantee absolute security. Keep your login credentials private, use permitted workspace roles carefully, and avoid putting confidential information in public card content, asset uploads, URLs, or contact messages.",
     ],
   },
@@ -160,7 +160,7 @@ export const termsSections: LegalSection[] = [
     id: "billing",
     title: "Subscriptions and charges",
     paragraphs: [
-      "The base monthly prices are USD $10 for Growth and USD $29 for Pro. PayMongo charges the PHP equivalent using a daily USD/PHP reference rate. The PHP amount is shown before authorization and may change on renewal. Checkout shows the applicable amount, any taxes or adjustments, and payment terms before you confirm. PayMongo processes checkout and billing.",
+      "The monthly prices are USD $10 for Growth and USD $29 for Pro. Stripe bills the configured USD monthly price. Checkout shows the applicable amount, any taxes or adjustments, and payment terms before you confirm. Stripe processes checkout and billing.",
       "New Growth and Pro subscriptions require the first payment at checkout. No free trial is offered. Existing subscriptions retain their previously agreed billing terms.",
       "Paid subscriptions renew monthly unless cancelled. Manage payment details and cancellation through Plans & billing. Read the confirmation screen when changing plans: plan changes apply at the next billing cycle.",
       "Verified payment provides the selected paid-plan access. An active paid subscription must satisfy the app’s payment and period checks; failed, expired, or otherwise ineligible subscriptions may lose paid access.",
@@ -180,8 +180,8 @@ export const termsSections: LegalSection[] = [
     id: "refunds",
     title: "Refunds and billing questions",
     paragraphs: [
-      "You may request a refund of your first subscription charge within seven days of that charge. This policy covers the first subscription charge only; renewal charges and subsequent subscription charges are not covered by this seven-day offer. The refund window starts with the first actual subscription charge. Use Contact to request a refund and identify the relevant account and charge without sharing full payment-card details. Refund requests are handled manually; PayMongo does not automatically apply this policy and cancellation alone does not issue a refund.",
-      "Approved refunds are processed through PayMongo to the original payment method where supported. Bank and payment-provider processing times can vary. This first-charge refund policy does not remove consumer or payment rights that cannot lawfully be waived, including rights concerning incorrect or unauthorized charges.",
+      "You may request a refund of your first subscription charge within seven days of that charge. This policy covers the first subscription charge only; renewal charges and subsequent subscription charges are not covered by this seven-day offer. The refund window starts with the first actual subscription charge. Use Contact to request a refund and identify the relevant account and charge without sharing full payment-card details. Refund requests are handled manually; Stripe does not automatically apply this policy and cancellation alone does not issue a refund.",
+      "Approved refunds are processed through Stripe to the original payment method where supported. Bank and payment-provider processing times can vary. This first-charge refund policy does not remove consumer or payment rights that cannot lawfully be waived, including rights concerning incorrect or unauthorized charges.",
     ],
   },
   {

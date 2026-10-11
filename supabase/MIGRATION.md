@@ -22,8 +22,8 @@ Apply `202610080002_onboarding_publication.sql` after the base migration. It add
 
 Apply `202610090004_plan_access.sql` after 001–003. It adds protected account entitlements, enforces account-wide quotas through triggers, and restricts analytics event history in both RLS and the workspace RPC. All accounts default to Free until an administrator provisions Growth/Pro. Review existing users' usage and assign their intended plans before deploying the frontend; records above a downgraded quota are retained but new creation is blocked. No automatic grandfathering, billing provider, payments, or data deletion is introduced. Test concurrent creation and entitlement changes in staging as part of deployment.
 
-## Billing foundation (005) and PayMongo replacement (032)
+## Billing foundation (005) and Stripe replacement (032)
 
 Apply `202610090005_stripe_billing.sql` after 004. It adds protected customer mapping, checkout leases, and atomic webhook entitlement updates. Deploy/configure both Edge Functions and follow [billing setup](BILLING.md). Existing entitlements remain unchanged until a verified mapped provider event is reconciled. Billing tables and RPCs are server-only. Never grant browser roles write access.
 
-Apply `202610110032_paymongo_billing.sql` after 031 and follow [PayMongo setup](BILLING.md). Historical 005 is retained for migration replay; the deployed code uses only PayMongo. Configure the renewal/FX worker and remove the old hosted provider webhook.
+Apply all migrations through `202610110033_restore_stripe_billing.sql` and follow [Stripe setup](BILLING.md). Historical provider migrations remain for replay. Remove the deployed PayMongo webhook and renewal worker after the transition.

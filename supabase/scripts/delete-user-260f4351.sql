@@ -1,7 +1,7 @@
 -- Manual script for the Supabase SQL Editor, executed as postgres.
 -- Permanently deletes this account and its owned business database records.
 -- Before running, remove its uploaded files through the Storage API/dashboard
--- and cancel any PayMongo subscription separately. SQL cannot do either action.
+-- and cancel any Stripe subscription separately. SQL cannot do either action.
 -- Do not delete storage.objects directly: that leaves uploaded files behind.
 begin;
 

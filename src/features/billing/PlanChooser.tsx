@@ -154,7 +154,7 @@ export function PlanChooser() {
         <div className="upgrade-assurance">
           <span>
             <LockKeyhole size={15} />
-            Secure checkout with PayMongo
+            Secure checkout with Stripe
           </span>
           <span>
             <ShieldCheck size={15} />

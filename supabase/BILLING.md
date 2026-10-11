@@ -1,52 +1,76 @@
-# PayMongo subscriptions
+# Stripe subscriptions
 
-Revbaze advertises Growth at USD $10/month and Pro at USD $29/month. PayMongo subscription charges are PHP. Checkout converts the USD price using the daily ExchangeRate-API USD/PHP reference rate, rounds to centavos and displays the exact PHP amount before consent. It does not use the customer's bank's exchange rate or charge USD.
+Apply all migrations through `202610110033_restore_stripe_billing.sql` in order. The app has a standalone authenticated plan chooser at `/#/upgrade`; Settings → Plans & billing shows verified access, usage, and a Stripe billing portal button. Growth is **$10 USD/month** and Pro is **$29 USD/month**, without annual billing or trial offers.
 
-A private quote ledger records the USD price, PHP amount, rate, date, provider plan and test/live mode. Daily quotes generate PayMongo plans automatically. Existing paid periods are preserved during plan changes/cancellation. Access comes from verified current subscription/invoice state, not return URL parameters. No free trials are created.
+## Configure and deploy
 
-## Deployment
+1. **Rotate the Stripe secret key pasted into chat.** Never put a Stripe secret, signing secret, or Supabase service-role key in frontend `.env.local` or any `VITE_` variable.
+2. In Stripe test mode, ensure these products each have one active **recurring monthly USD price**, quantity one:
+   - Growth: `prod_VQBapUci1Vc65j`, $10.
+   - Pro: `prod_VQBaIIsUY3WIXb`, $29.
+   Copy their `price_…` IDs if there are multiple prices. The server accepts either a Price ID or a Product ID, resolving and validating the amount/currency/interval before checkout. Product IDs alone do not create a price.
+3. Copy `functions/.env.example` to `functions/.env` and enter your **rotated** test secret and signing secret. Set `APP_URL` to your app’s exact origin (`http://localhost:5173` locally, HTTPS in production). Never commit this file. Deployed functions automatically receive Supabase URL and service-role credentials.
+4. Link the Supabase CLI to your project, then run:
+   ```sh
+   supabase secrets set --env-file supabase/functions/.env
+   supabase functions deploy billing
+   supabase functions deploy stripe-webhook
+   ```
+   `supabase/config.toml` disables gateway JWT validation for these functions. The billing handler explicitly validates the user token using Supabase Auth; the webhook validates Stripe’s signature against the untouched request body and rejects timestamps beyond five minutes.
+5. Register a **snapshot** webhook destination at `https://YOUR_PROJECT.supabase.co/functions/v1/stripe-webhook` for:
+   - `checkout.session.completed`
+   - `checkout.session.async_payment_succeeded`
+   - `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
+   - `invoice.paid`, `invoice.payment_failed`
+   Set its `whsec_…` signing secret in Supabase secrets. CLI forwarding uses a different signing secret from the dashboard endpoint.
+6. Activate/configure the Stripe customer portal. Allow payment methods, invoice history, cancellation, and switches between the configured $10/$29 monthly prices. For a dedicated portal configuration, set its `bpc_…` ID as the server secret `STRIPE_PORTAL_CONFIGURATION_ID`. Set upgrades to invoice immediately (`always_invoice`) so customers pay before their higher tier activates; configure downgrade timing deliberately. Existing subscribers use a selected-plan confirmation flow in this portal rather than creating another subscription.
+7. Test with Stripe test payment methods: successful checkout, failed payment, cancellation at period end, immediate cancellation, Growth→Pro, and replayed webhooks. Confirm the `account_plans` row and the application’s actual access change. Going live requires matching **live** Product/Price IDs, a live secret, and the live endpoint’s signing secret.
 
-1. Apply all migrations through `202610110032_paymongo_billing.sql`. Historical migration 005 stays in place for ordered database replay; 032 replaces its provider mapping and lease implementation. Private historical records remain for audit purposes.
-2. Contact PayMongo to enable Subscriptions, Card Vaulting and supported payment methods on the merchant account before testing. Test and live mode are separate.
-3. Set these **Edge Function secrets**, never `VITE_` variables:
-   - `PAYMONGO_SECRET_KEY`: `sk_test_...` initially.
-   - `PAYMONGO_PUBLIC_KEY`: matching `pk_test_...`; the authenticated payment setup response intentionally shares this public key with the browser.
-   - `PAYMONGO_WEBHOOK_SECRET`: signing secret for this endpoint and mode.
-   - `BILLING_RENEWAL_SECRET`: a separate random secret of at least 32 characters.
-   - `APP_URL`: exact frontend origin; existing Supabase URL/service-role secrets are also required.
-4. Deploy `billing`, `paymongo-webhook`, `billing-renewals` using the committed function configuration. Delete the previously deployed `stripe-webhook` function and disable its provider webhook. Remove unused `STRIPE_*` Edge secrets. Removing local source does not delete hosted functions or cancel provider subscriptions.
-5. Register `https://PROJECT.supabase.co/functions/v1/paymongo-webhook` for all available subscription events, including `subscription.activated`, `subscription.updated`, `subscription.past_due`, `subscription.unpaid`, and `subscription.invoice.created`, `subscription.invoice.finalized`, `subscription.invoice.paid`, `subscription.invoice.payment_failed`, `subscription.invoice.updated`. Use event names supported by the merchant's enabled API. Register the webhook before accepting payments.
-6. Store `revbaze_project_url` and `revbaze_billing_renewal_secret` in Supabase Vault. Run `scripts/schedule-billing-renewals.sql`. Monitor `failed` responses and the age of `billing_customers.fx_checked_at`.
-7. The user confirmed that old subscriptions are test-only. After verifying that fact on the target project, an operator can run `select public.reset_legacy_test_billing();` to remove old test entitlements/pending state. This is intentionally separate from schema migration. Cancel/delete obsolete test subscriptions in the old provider dashboard. Real subscribers would require a separate migration and payment authorization; do not run this reset for them.
+## Invoice emails
 
-## Exchange rates and renewal behavior
+Subscription Checkout automatically creates invoices, including renewals and invoiced upgrades. Revbaze supplies the authenticated account email when creating a Stripe customer and refreshes it before subsequent checkout or upgrade requests.
 
-The backend caches one USD/PHP reference rate per UTC day. A missing or stale (>36 hours) upstream quote blocks new pricing rather than guessing. Checkout reuses an existing incomplete subscription and honors its previously quoted amount.
+In [Stripe Settings → Business → Customer emails](https://dashboard.stripe.com/settings/emails), enable **Successful payments** and save. Stripe sends the paid invoice receipt after a successful payment; cancellation or a declined payment does not trigger it. This dashboard setting must be enabled in Stripe; deploying the functions alone does not enable automatic emails. Customers can also access invoice history through Settings → Plans & billing → Manage billing.
 
-The scheduled worker reconciles payment state, then updates active subscriptions to their tier's latest daily PHP plan. PayMongo applies plan changes at the next billing cycle; already-generated invoices are not retroactively repriced. Thus the renewal uses the quote installed before PayMongo prepares that invoice, not a guaranteed exact exchange rate at charge time. The payment screen discloses variable PHP renewals and requires consent. USD base prices remain unchanged.
+**Test mode:** automatic receipt emails are not sent for test payments. To test delivery, open the successful payment in Stripe → Receipt history → ⋯ → Send receipt, confirm the email address, and send. See [Stripe receipts and paid invoices](https://docs.stripe.com/receipts). Configure receipt branding and business details in Stripe before launching live billing. No separate Supabase SMTP configuration is needed for Stripe's emails.
 
-The worker handles at most ten accounts per invocation, revisiting each after 24 hours; schedule every five minutes and monitor backlog as the subscriber count grows. Retry failed repricing/reconciliation; alert on stale FX rates, failed/disabled webhooks and overdue account checks. Configure hosted timeouts/batch size for measured API latency. Browser status checks also reconcile missed events, but do not replace the worker.
+## Access and reliability
 
-Daily FX plans are not customer-specific. Avoid provider-side edits to recorded prices. Test/live plan caches are separate. Use separate Supabase projects for test and production: customer mappings and entitlement tables should not mix modes. The backend checks invoice amount/currency, registered plan, recurrence and provider mode before granting access.
+A success redirect never grants access. Signed webhooks map a Stripe customer to an account through a protected table, serialize reconciliation using a database lease, retrieve current subscription state, and atomically update `account_plans` plus the processed-event ledger. Duplicate events are harmless; delayed events use fresh Stripe state. If reconciliation fails, Stripe receives a non-success response and can retry.
 
-## Payment data and customer controls
+Recognized active subscriptions require a paid latest invoice before access is granted through their current period end. Provider-authorized trials retain their trial access. Past-due, unpaid, incomplete, paused, cancelled, or unknown-price subscriptions grant Free access. Cancellation at period end retains paid access until the period ends. Existing above-limit content is retained after a downgrade; new creation remains blocked by migration 004. An expired entitlement fails closed even if a webhook is delayed. Renewals therefore need working webhooks.
 
-Card details go directly from the browser to PayMongo's public-key payment-method API; they are not sent to Revbaze Edge Functions or persisted in browser storage. The temporary payment intent/client key is held in account-scoped sessionStorage. Clear browser state between accounts and use a tested CSP. This direct card form still requires appropriate PCI/security review; avoiding server card storage alone does not establish compliance.
+Server-only customer/session records and RPCs have no browser grants. Checkout accepts a plan name, never a client-supplied amount, Stripe customer, redirect URL, or user ID. The server reuses pending sessions and prevents creating another subscription when one already exists. Billing follows account ownership; team members pay for their own account, while workspace access inherits the workspace owner’s entitlement.
 
-Maya authorization and card 3DS redirect to the provider's returned HTTPS URL. Payment-method updates use a setup intent. Cancellation prevents future invoices while retaining an already verified paid period. Plan changes apply at the next billing cycle. Open invoices can remain collectible after cancellation; display/support and test that behavior with PayMongo.
+This implementation uses supported **hosted Stripe Checkout** (`ui_mode: hosted`, `mode: subscription`). The pinned API uses `hosted`; Checkout returns a Stripe URL for the browser redirect. No card details pass through Revbaze. API version is pinned to `2025-09-30.clover`.
 
-## Required hosted acceptance tests
+CSV import, production integrations/webhooks, and priority-support delivery remain separate planned capabilities; purchasing an entitlement does not implement those features. Analytics/integrations currently display sample activity where already configured.
 
-Run local tests/build/lint, then test the actual enabled merchant API: daily plan creation and cache reuse; first card/Maya authorization; 3DS rejection/retry; renewal; failed payment; payment-method replacement; next-cycle upgrade/downgrade; cancellation with an existing invoice; duplicate/delayed webhooks; function failure after subscription creation; FX outage; test/live mismatch; cron recovery and quote changes before invoice generation. Check current subscription plan/invoice shapes and setup-intent behavior on the enabled account. No live payment or remote deployment was performed during implementation.
+## Local checks
 
-References: [Subscriptions](https://docs.paymongo.com/docs/payment-acceptance-subscriptions), [Plan currency](https://docs.paymongo.com/reference/plan-resource), [Webhook authentication](https://docs.paymongo.com/docs/developer-tools-webhook-setup-management), [Exchange rate endpoint](https://www.exchangerate-api.com/docs/free).
+`npm test` includes real isolated PostgreSQL tests for protected billing grants, leases, duplicate-event handling, expiry, atomic plan changes, quotas, and pure billing tests for monthly-price validation, subscription state, and raw-body signature verification. `tests/onboarding-browser.py` checks upgrade/settings UI with mocked billing and never calls Stripe or the hosted database. No paid end-to-end transaction is claimed until the deployment/configuration steps above are completed.
 
-## Merchant subscription activation
+## Checkout return navigation
 
-Customer creation requires `default_device: "email"` and nonempty first/last names. Single-name signup profiles use `Customer` as the provider surname fallback.
+`/#/upgrade` renders without waiting for a dashboard workspace fetch. Direct `/upgrade` and `/checkout` URLs normalize to the application's hash routes.
 
-On October 11, 2026, a real test-mode API check confirmed corrected customer creation succeeds. Plan creation was blocked with `merchant_invalid_state`: "no subscription payment methods are configured for this organization". The synthetic customer was deleted; no subscription or payment was created. Ask PayMongo support to enable Subscriptions and configure Card or Maya subscription methods for the merchant's intended test/live environment. API keys and a webhook alone do not enable this capability. Full payment and renewal acceptance testing remains pending activation.
+The server sets both return URLs to `/#/checkout`. Cancellation restores the validated local route where checkout started, preserving its query parameters. Completion shows a confirmation screen, polls authenticated account-plan access, and continues to Overview only when the selected plan is active. If verification takes more than a minute, the screen provides Check again and Back buttons. A success URL never grants access on its own. Existing pending sessions with outdated return URLs are expired and replaced before reuse.
 
-## Checkout origin configuration
+## Paid checkout and signup
 
-An OPTIONS 403 prevents the browser from sending checkout. Deploy the current billing handler, which answers preflight independently and applies the origin allowlist to actual POST requests. Set APP_URL to the exact browser origin (scheme, hostname and port). For additional intended frontend origins, set BILLING_ALLOWED_ORIGINS to a comma-separated list of exact origins, such as `http://localhost:5173,https://preview.example.com`. Do not use wildcards. Allowed origins also determine the safe payment return origin. Authentication and entitlement verification remain required.
+New Growth and Pro subscriptions charge $10/month or $29/month at checkout, with no free trial. Checkout collects payment details and the first payment before paid access is granted. Existing subscriptions retain their agreed terms, including previously started trials; existing subscribers manage changes through the customer portal. Pending checkout sessions configured with the old trial offer are expired and replaced when checkout is requested again.
+
+Pricing carries the selected plan into signup and user metadata across email confirmation. Free proceeds directly to onboarding. Growth and Pro open `/start-plan` and redirect to hosted Stripe Checkout before onboarding. The return screen waits for server-verified entitlement before continuing; a redirect alone never grants access. Cancellation offers retry or Free instead.
+
+Deploy with `supabase functions deploy billing`. Apply migration 033 when switching back from PayMongo. Keep the subscription, checkout, and invoice webhooks enabled. Test new Growth and Pro checkouts, cancellation, failed payment, and replacement of old trial checkout sessions using Stripe test mode.
+
+## Switching from PayMongo
+
+Migration 033 archives PayMongo customer state in a private table, restores Stripe customer mappings, clears provider-specific checkout/subscription state, and unschedules the old renewal job. Existing account entitlements are preserved until expiry or verified Stripe reconciliation. Provider subscriptions are not transferred automatically. Before allowing existing PayMongo subscribers to start Stripe subscriptions, arrange cancellation/refunds or a transition at period end to avoid overlapping charges.
+
+Remove the previously deployed functions after migration:
+```sh
+supabase functions delete paymongo-webhook
+supabase functions delete billing-renewals
+```
+Disable the PayMongo webhook in its dashboard and remove obsolete PayMongo/renewal secrets from Supabase. Historical migrations and private quote tables remain for database replay and auditing.

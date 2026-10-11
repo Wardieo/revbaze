@@ -48,16 +48,11 @@ export function BillingSettings() {
     }, 2500);
     return () => clearInterval(timer);
   }, [success, queryClient]);
-  async function manage(action: "cancel" | "payment-method") {
+  async function manage() {
     setBusy(true);
     setError("");
     try {
-      if (action === "cancel") {
-        await billingAction("cancel");
-        await queryClient.invalidateQueries({ queryKey: ["billing-status"] });
-        await queryClient.invalidateQueries({ queryKey: ["account-plan"] });
-        setBusy(false);
-      } else await openBilling("payment-method");
+      await openBilling("portal");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to open billing.");
       setBusy(false);
@@ -79,7 +74,7 @@ export function BillingSettings() {
       {success && (
         <p className="billing-notice" role="status">
           {!paymentConfirmed
-            ? "Checkout returned successfully. We’re waiting for PayMongo to confirm your subscription. Your access changes only after verification."
+            ? "Checkout returned successfully. We’re waiting for Stripe to confirm your subscription. Your access changes only after verification."
             : `Your ${current.name} access is active. Thanks for growing with Revbaze.`}
         </p>
       )}
@@ -158,11 +153,6 @@ export function BillingSettings() {
           </Link>
         </div>
       </section>
-      {params.get("scheduled") === "1" && (
-        <p role="status" className="billing-notice">
-          Your plan change applies at the next billing cycle.
-        </p>
-      )}
       <DowngradeSelection />
       <div className="billing-options">
         {Object.values(planCatalog)
@@ -201,10 +191,10 @@ export function BillingSettings() {
           <CreditCard size={23} />
         </span>
         <div>
-          <h3>Subscription & payment method</h3>
+          <h3>Payment methods & invoices</h3>
           <p>
-            Update your payment method or cancel future renewals here. Paid
-            access remains available until the end of your verified paid period.
+            Manage payment details, invoices, subscription changes, and
+            cancellation securely through Stripe.
           </p>
           {billing.data?.cancelAtPeriodEnd && (
             <small>
@@ -224,27 +214,12 @@ export function BillingSettings() {
         </div>
         <button
           className="button button-outline"
-          disabled={
-            busy ||
-            !billing.data?.hasCustomer ||
-            billing.data?.status !== "active"
-          }
-          onClick={() => void manage("payment-method")}
+          disabled={busy || !billing.data?.hasCustomer}
+          onClick={() => void manage()}
         >
-          {busy && <LoaderCircle size={15} className="billing-spinner" />}Update
-          payment method
+          {busy && <LoaderCircle size={15} className="billing-spinner" />}Manage
+          billing
           <ArrowUpRight size={14} />
-        </button>
-        <button
-          className="button button-outline"
-          disabled={
-            busy ||
-            !billing.data?.hasCustomer ||
-            billing.data?.cancelAtPeriodEnd
-          }
-          onClick={() => void manage("cancel")}
-        >
-          Cancel future renewals
         </button>
       </section>
     </div>

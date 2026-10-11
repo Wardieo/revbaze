@@ -1,67 +1,79 @@
-export type BillingConfig = {
-  growth: string;
-  pro: string;
-  growthAmount: number;
-  proAmount: number;
+export type Price = {
+  id: string;
+  active: boolean;
+  product: string | { id: string };
   currency: string;
-  live: boolean;
+  unit_amount: number;
+  recurring?: { interval: string; interval_count: number };
+  billing_scheme?: string;
+  type?: string;
 };
-export type Resource = { id: string; attributes: Record<string, any> };
-export function validPlan(
-  plan: any,
-  name: "growth" | "pro",
-  config: BillingConfig,
+export type Subscription = {
+  id: string;
+  status: string;
+  cancel_at_period_end?: boolean;
+  latest_invoice?: { status: string; paid?: boolean } | string | null;
+  current_period_end?: number;
+  items: {
+    data: Array<{
+      quantity: number;
+      current_period_end?: number;
+      price: Price;
+    }>;
+  };
+};
+export function validPrice(
+  price: Price,
+  plan: "growth" | "pro",
+  configured: string,
 ) {
+  const product =
+    typeof price.product === "string" ? price.product : price.product.id;
   return (
-    plan?.id === config[name] &&
-    plan.amount === config[name === "growth" ? "growthAmount" : "proAmount"] &&
-    plan.currency?.toUpperCase() === config.currency &&
-    ["month", "monthly"].includes(plan.interval) &&
-    plan.interval_count === 1 &&
-    plan.type !== "on_demand"
+    (configured.startsWith("price_")
+      ? price.id === configured
+      : product === configured) &&
+    price.currency === "usd" &&
+    price.unit_amount === (plan === "growth" ? 1000 : 2900) &&
+    price.recurring?.interval === "month" &&
+    price.recurring.interval_count === 1 &&
+    (!price.billing_scheme || price.billing_scheme === "per_unit")
   );
 }
-// A provider status alone is not payment evidence. Match the invoice to the configured price.
-export type Entitlement = {
-  plan: "free" | "growth" | "pro";
-  subscription: string | null;
-  status: string;
-  periodEnd: string | null;
-  cancel: boolean;
-};
 export function entitlement(
-  items: Resource[],
-  config: BillingConfig,
+  subscriptions: Subscription[],
+  config: { growth: string; pro: string },
   now = Date.now(),
-): Entitlement {
-  const choices = items.flatMap((s) => {
-    const a = s.attributes,
-      invoice = a.latest_invoice;
-    const plan = ["growth", "pro"].find((name) =>
-      validPlan(a.plan, name as "growth" | "pro", config),
-    ) as "growth" | "pro" | undefined;
-    const end = Date.parse(a.next_billing_schedule);
+) {
+  const choices = subscriptions.flatMap((s) => {
+    if (!["active", "trialing"].includes(s.status) || s.items.data.length !== 1)
+      return [];
+    // A redirect or an active subscription with an unpaid invoice is not payment confirmation.
     if (
-      !plan ||
-      a.livemode !== config.live ||
-      a.status !== "active" ||
-      invoice?.status !== "paid" ||
-      invoice.amount !==
-        config[plan === "growth" ? "growthAmount" : "proAmount"] ||
-      invoice.currency?.toUpperCase() !== config.currency ||
-      !Number.isFinite(end) ||
-      end <= now
+      s.status === "active" &&
+      (typeof s.latest_invoice !== "object" ||
+        s.latest_invoice?.status !== "paid")
     )
       return [];
-    return [
-      {
-        plan,
-        subscription: s.id,
-        status: "active",
-        periodEnd: new Date(end).toISOString(),
-        cancel: false,
-      },
-    ];
+    const item = s.items.data[0];
+    const end = item.current_period_end ?? s.current_period_end;
+    if (item.quantity !== 1 || !end || end * 1000 <= now) return [];
+    const plan = validPrice(item.price, "pro", config.pro)
+      ? "pro"
+      : validPrice(item.price, "growth", config.growth)
+        ? "growth"
+        : null;
+    return plan
+      ? [
+          {
+            plan,
+            subscription: s.id,
+            status: s.status,
+            periodEnd: new Date(end * 1000).toISOString(),
+            cancel: !!s.cancel_at_period_end,
+          },
+        ]
+      : [];
   });
   choices.sort((a, b) => Number(b.plan === "pro") - Number(a.plan === "pro"));
   return (
@@ -74,22 +86,19 @@ export function entitlement(
     }
   );
 }
+// Stripe's documented v1 signature: HMAC-SHA256(timestamp + '.' + untouched body).
 export async function verifySignature(
   body: string,
   header: string,
   secret: string,
-  live = false,
   now = Date.now(),
 ) {
-  const parts = Object.fromEntries(
-    header.split(",").map((p) => p.trim().split("=")),
-  );
-  const stamp = parts.t,
-    signature = parts[live ? "li" : "te"];
+  const parts = header.split(",").map((p) => p.split("="));
+  const timestamp = parts.find((p) => p[0] === "t")?.[1];
   if (
-    !/^\d+$/.test(stamp || "") ||
-    Math.abs(now / 1000 - Number(stamp)) > 300 ||
-    !/^[a-f0-9]{64}$/.test(signature || "")
+    !timestamp ||
+    !/^\d+$/.test(timestamp) ||
+    Math.abs(now / 1000 - Number(timestamp)) > 300
   )
     throw new Error("Invalid webhook signature");
   const key = await crypto.subtle.importKey(
@@ -99,17 +108,22 @@ export async function verifySignature(
     false,
     ["verify"],
   );
-  if (
-    !(await crypto.subtle.verify(
-      "HMAC",
-      key,
-      new Uint8Array(
-        signature.match(/../g)!.map((v: string) => parseInt(v, 16)),
-      ),
-      new TextEncoder().encode(`${stamp}.${body}`),
-    ))
-  )
-    throw new Error("Invalid webhook signature");
+  for (const [kind, value] of parts)
+    if (kind === "v1" && /^[a-f0-9]{64}$/.test(value)) {
+      const signature = new Uint8Array(
+        value.match(/../g)!.map((v) => parseInt(v, 16)),
+      );
+      if (
+        await crypto.subtle.verify(
+          "HMAC",
+          key,
+          signature,
+          new TextEncoder().encode(`${timestamp}.${body}`),
+        )
+      )
+        return;
+    }
+  throw new Error("Invalid webhook signature");
 }
 // Checkout redirects accept only local application pages, never arbitrary URLs.
 export function checkoutReturnPath(value: unknown): string {

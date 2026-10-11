@@ -50,7 +50,6 @@ import { PlatformsPage } from "./features/review-platforms/PlatformsPage";
 import { IntegrationsPage } from "./features/integrations/IntegrationsPage";
 import { SignupCheckout } from "./features/billing/SignupCheckout";
 import { usePlan } from "./hooks/usePlan";
-import { PayMongoPayment } from "./features/billing/PayMongoPayment";
 import { CheckoutReturn } from "./features/billing/CheckoutReturn";
 import { PlanChooser } from "./features/billing/PlanChooser";
 import { SettingsPage } from "./features/settings/SettingsPage";
@@ -367,12 +366,10 @@ function Workspace() {
         <SignupCheckout />
       </div>
     );
-  if (["/upgrade", "/pay", "/checkout"].includes(location.pathname)) {
+  if (["/upgrade", "/checkout"].includes(location.pathname)) {
     return (
       <div className={`app settings-shell ${dark ? "dark" : ""}`}>
-        {location.pathname === "/pay" ? (
-          <PayMongoPayment />
-        ) : location.pathname === "/checkout" ? (
+        {location.pathname === "/checkout" ? (
           <CheckoutReturn />
         ) : (
           <PlanChooser />
