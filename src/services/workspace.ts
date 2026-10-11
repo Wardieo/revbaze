@@ -335,6 +335,9 @@ async function uploadManagedImage(
   });
   if (error) {
     let message = "Unable to upload image. Please try again.";
+    if (error.name === "FunctionsFetchError")
+      message =
+        "Could not reach image upload. Check your connection and try again. If it continues, verify that image-upload is deployed and APP_URL matches this website.";
     try {
       message = (await error.context?.json())?.error || message;
     } catch {

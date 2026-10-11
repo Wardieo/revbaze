@@ -92,12 +92,12 @@ export function BusinessStep({
       <ImageUpload
         label="Business logo"
         value={data.business.logo_url}
-        disabled={
-          !data.business.name.trim() ||
-          !data.business.category.trim() ||
-          Boolean(websiteError)
-        }
         upload={async (file) => {
+          if (!data.business.name.trim() || !data.business.category.trim())
+            throw new Error(
+              "Enter your business name and category, then choose your logo again.",
+            );
+          if (websiteError) throw new Error(websiteError);
           await save();
           return uploadImage(file, data.business.id);
         }}

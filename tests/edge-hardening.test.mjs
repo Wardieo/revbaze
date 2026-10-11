@@ -144,6 +144,33 @@ const compileHandler = async (path) => {
   await import(uri(source));
 };
 await compileHandler("supabase/functions/image-upload/index.ts");
+const preflight = await handler(
+  new Request("https://fixture/image-upload", {
+    method: "OPTIONS",
+    headers: {
+      origin: env.APP_URL,
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers":
+        "content-type,x-image-bucket,x-supabase-client-platform,x-supabase-client-platform-version,x-supabase-client-runtime,x-supabase-client-runtime-version",
+    },
+  }),
+);
+assert.equal(preflight.status, 204);
+for (const header of [
+  "x-image-bucket",
+  "x-business-id",
+  "x-supabase-client-platform",
+  "x-supabase-client-platform-version",
+  "x-supabase-client-runtime",
+  "x-supabase-client-runtime-version",
+])
+  assert(
+    preflight.headers
+      .get("Access-Control-Allow-Headers")
+      .split(",")
+      .map((v) => v.trim())
+      .includes(header),
+  );
 const upload = (token = "verified-token", body = png, origin = env.APP_URL) =>
   handler(
     new Request("https://fixture/image-upload", {

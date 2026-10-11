@@ -20,6 +20,7 @@ export function ImageUpload({
     changeRef.current = onChange;
   }, [onChange]);
   const id = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
   const [error, setError] = useState("");
@@ -70,19 +71,27 @@ export function ImageUpload({
           <Upload size={22} />
         )}
         <div>
-          <label htmlFor={id}>
+          <button
+            type="button"
+            className="onboard-image-picker"
+            disabled={busy || disabled}
+            aria-controls={id}
+            onClick={() => inputRef.current?.click()}
+          >
             {busy ? "Uploading…" : "Choose an image"}
-            <input
-              id={id}
-              type="file"
-              accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-              disabled={busy || disabled}
-              onChange={(e) => {
-                void pick(e.target.files?.[0]);
-                e.target.value = "";
-              }}
-            />
-          </label>
+          </button>
+          <input
+            ref={inputRef}
+            id={id}
+            aria-label={`Choose ${label.toLowerCase()}`}
+            type="file"
+            accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+            disabled={busy || disabled}
+            onChange={(e) => {
+              void pick(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
           <small>
             {disabled
               ? "Enter your business name and category first."

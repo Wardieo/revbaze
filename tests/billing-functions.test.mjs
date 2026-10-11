@@ -253,6 +253,7 @@ globalThis.fetch = async (url, options) => {
       metadata: {
         revbaze_plan: target,
         revbaze_trial_days: body.get("metadata[revbaze_trial_days]"),
+        revbaze_checkout_design: body.get("metadata[revbaze_checkout_design]"),
       },
     };
     value = checkout;
@@ -331,11 +332,16 @@ assert.equal(plan, "free");
 result = await billing(request("checkout", { plan: "growth" }));
 assert.equal(result.status, 200);
 assert.equal(checkoutCreates, 1);
+// Pending checkouts with the old appearance must be replaced.
+checkout.metadata.revbaze_checkout_design = "old";
+result = await billing(request("checkout", { plan: "growth" }));
+assert.equal(result.status, 200);
+assert.equal(checkoutCreates, 2);
 // Old trial checkout must be replaced before it can be reused.
 checkout.metadata.revbaze_trial_days = "14";
 result = await billing(request("checkout", { plan: "growth" }));
 assert.equal(result.status, 200);
-assert.equal(checkoutCreates, 2);
+assert.equal(checkoutCreates, 3);
 assert.equal(checkout.metadata.revbaze_trial_days, "0");
 active = [
   {
@@ -356,11 +362,11 @@ active = [
 ];
 result = await billing(request("checkout", { plan: "growth" }));
 assert.equal((await result.json()).url, "https://billing.stripe.com/test");
-assert.equal(checkoutCreates, 2);
+assert.equal(checkoutCreates, 3);
 result = await billing(request("checkout", { plan: "pro" }));
 assert.equal(result.status, 200);
 assert.equal((await result.json()).url, "https://billing.stripe.com/test");
-assert.equal(checkoutCreates, 2);
+assert.equal(checkoutCreates, 3);
 assert.equal(plan, "free", "Opening payment confirmation cannot grant access");
 env.STRIPE_PORTAL_CONFIGURATION_ID = "bpc_test";
 result = await billing(request("checkout", { plan: "pro" }));

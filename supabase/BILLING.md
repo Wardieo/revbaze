@@ -74,3 +74,7 @@ supabase functions delete paymongo-webhook
 supabase functions delete billing-renewals
 ```
 Disable the PayMongo webhook in its dashboard and remove obsolete PayMongo/renewal secrets from Supabase. Historical migrations and private quote tables remain for database replay and auditing.
+
+## Checkout appearance
+
+New sessions use a white background, navy (#042751) buttons, Be Vietnam Pro, rounded borders, and logo file `file_1UPLZx2fdtrZQEkuwZZqDSIX`. This file must exist in the Stripe account/mode used by the server key; replace it with the matching live file when switching accounts or going live. Customers can opt to save their payment method. Open sessions from the previous design are expired and replaced. Deploy `billing` to apply these settings.

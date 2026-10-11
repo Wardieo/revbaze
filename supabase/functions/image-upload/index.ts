@@ -6,7 +6,7 @@ Deno.serve(async (request: Request) => {
   const headers = {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Headers":
-      "authorization, apikey, content-type, x-client-info, x-business-id, x-image-bucket",
+      "authorization, apikey, content-type, x-client-info, x-business-id, x-image-bucket, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Content-Type": "application/json",
     Vary: "Origin",

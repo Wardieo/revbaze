@@ -218,7 +218,8 @@ Deno.serve(async (request: Request) => {
         lease.checkout_plan === input.plan &&
         previous.success_url === successURL &&
         previous.cancel_url === cancelURL &&
-        previous.metadata?.revbaze_trial_days === "0"
+        previous.metadata?.revbaze_trial_days === "0" &&
+        previous.metadata?.revbaze_checkout_design === "2026-10-branding"
       ) {
         await rpc(db, "billing_release", { p_user: userId, p_token: token });
         token = undefined;
@@ -264,7 +265,8 @@ Deno.serve(async (request: Request) => {
         pending.metadata?.revbaze_plan === input.plan &&
         pending.success_url === successURL &&
         pending.cancel_url === cancelURL &&
-        pending.metadata?.revbaze_trial_days === "0"
+        pending.metadata?.revbaze_trial_days === "0" &&
+        pending.metadata?.revbaze_checkout_design === "2026-10-branding"
       ) {
         await rpc(db, "billing_release", {
           p_user: userId,
@@ -293,6 +295,16 @@ Deno.serve(async (request: Request) => {
         "metadata[revbaze_plan]": input.plan,
         "metadata[revbaze_trial_days]": "0",
         "subscription_data[metadata][revbaze_user_id]": userId,
+        "metadata[revbaze_checkout_design]": "2026-10-branding",
+        allow_promotion_codes: "false",
+        submit_type: "auto",
+        "saved_payment_method_options[payment_method_save]": "enabled",
+        "branding_settings[background_color]": "#ffffff",
+        "branding_settings[button_color]": "#042751",
+        "branding_settings[font_family]": "be_vietnam_pro",
+        "branding_settings[border_style]": "rounded",
+        "branding_settings[logo][type]": "file",
+        "branding_settings[logo][file]": "file_1UPLZx2fdtrZQEkuwZZqDSIX",
         billing_address_collection: "auto",
         payment_method_collection: "always",
         success_url: successURL,
