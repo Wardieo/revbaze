@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { LoaderCircle } from "lucide-react";
 import { useSession } from "../../hooks/useSession";
 import { usePlan } from "../../hooks/usePlan";
 import { supabase } from "../../lib/supabase";
 import { openBilling } from "../../services/billing";
 import { Button } from "../../components/ui/Button";
-import { planCatalog } from "../../lib/plans";
 import "./billing.css";
 export function SignupCheckout() {
   const { session } = useSession();
@@ -55,19 +53,25 @@ export function SignupCheckout() {
     }
     navigate("/onboarding", { replace: true });
   }
+  if (busy || (!error && !access.isError && !cancelled)) {
+    return (
+      <div className="checkout-return">
+        <div
+          className="signup-checkout-loading"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="signup-checkout-loading-line" aria-hidden="true" />
+          <p>Opening Stripe checkout…</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="checkout-return">
       <section className="checkout-return-card signup-checkout-card">
-        <span className="signup-checkout-label">{planCatalog[plan].name} · monthly subscription</span>
-        <h1>Choose {planCatalog[plan].name}</h1>
-        <p>Finish checkout, then make your business yours.</p>
-        <div className="signup-checkout-price"><strong>${planCatalog[plan].monthly}</strong><span>per month</span><small>USD · Billed monthly</small></div>
-        <p className="signup-checkout-details">Your first payment is collected at checkout. Once payment is confirmed, you’ll continue to business setup with {planCatalog[plan].name} access.</p>
-        {cancelled && (
-          <p role="status">
-            Checkout was cancelled. You haven’t started a subscription.
-          </p>
-        )}
+        <h1>{cancelled ? "Checkout cancelled" : "Unable to open checkout"}</h1>
+        {cancelled && <p role="status">Try again or continue with Free.</p>}
         {(error || access.isError) && (
           <p role="alert" className="billing-error">
             {error || access.error?.message}
@@ -78,14 +82,7 @@ export function SignupCheckout() {
           disabled={busy || !access.ready}
           onClick={() => void checkout()}
         >
-          {busy ? (
-            <>
-              <LoaderCircle size={16} className="billing-spinner" />
-              Opening checkout…
-            </>
-          ) : (
-            "Continue to checkout"
-          )}
+          Try checkout again
         </Button>
         <Button variant="outline" disabled={busy} onClick={() => void free()}>
           Continue with Free instead

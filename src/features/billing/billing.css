@@ -615,6 +615,44 @@
   color: #8295b1;
   font-size: 11px;
 }
+.signup-checkout-loading {
+  width: min(280px, 100%);
+  text-align: center;
+}
+.signup-checkout-loading p {
+  margin-top: 16px;
+  font-size: 14px;
+  color: #7385a1;
+}
+.signup-checkout-loading-line {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #dfe8f7;
+}
+.signup-checkout-loading-line::after {
+  content: "";
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: #042751;
+  animation: signup-checkout-progress 1.2s ease-in-out infinite;
+}
+@keyframes signup-checkout-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(350%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .signup-checkout-loading-line::after {
+    width: 100%;
+    animation: none;
+  }
+}
 .signup-checkout-card {
   text-align: left;
   padding: 36px;
