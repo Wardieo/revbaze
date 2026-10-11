@@ -62,7 +62,7 @@ function QRReveal({ reduced }: { reduced: boolean }) {
       </div>
       <div className="walkthrough-qr-result">
         <Suspense fallback={<div className="walkthrough-qr-placeholder" />}>
-          <QRPreview url="https://example.com/revbaze-demo" />
+          <QRPreview url="https://example.com/revbaze-demo" showEnlarge={false} />
         </Suspense>
       </div>
     </div>

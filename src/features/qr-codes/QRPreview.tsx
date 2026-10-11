@@ -12,6 +12,7 @@ export function QRPreview({
   logo = "",
   style = "square",
   regenerate = 0,
+  showEnlarge = true,
 }: {
   url: string;
   foreground?: string;
@@ -19,6 +20,7 @@ export function QRPreview({
   logo?: string;
   style?: QRStyle;
   regenerate?: number;
+  showEnlarge?: boolean;
 }) {
   const key = JSON.stringify([
     url,
@@ -94,10 +96,12 @@ export function QRPreview({
           </div>
         )}
       </div>
-      <Button disabled={!ready} onClick={() => setScanOpen(true)}>
-        <ScanLine size={16} /> Enlarge to scan
-      </Button>
-      {scanOpen && (
+      {showEnlarge && (
+        <Button disabled={!ready} onClick={() => setScanOpen(true)}>
+          <ScanLine size={16} /> Enlarge to scan
+        </Button>
+      )}
+      {showEnlarge && scanOpen && (
         <Dialog title="Scan your review QR code" close={() => setScanOpen(false)}>
           <div className="qr-scan-preview">
             {ready ? <img src={result.png} alt={`Scan to open ${url}`} /> : <p>Generating QR code…</p>}
