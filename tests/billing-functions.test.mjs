@@ -419,6 +419,32 @@ globalThis.fetch = async (url, options) => {
     const attrs = JSON.parse(options.body).data.attributes;
     assert.equal(attrs.first_name, "Edward");
     assert.equal(attrs.last_name, "Mosquera");
+    assert.equal(attrs.default_device, "email");
+    return new Response(JSON.stringify({ data: { id: "cus_owner" } }), {
+      status: 200,
+    });
+  }
+  return originalFetch(url, options);
+};
+assert.equal((await billing(request("checkout"))).status, 200);
+// Signup permits a single name; PayMongo still requires a nonempty surname.
+db.auth.getUser = async () => ({
+  data: {
+    user: {
+      id: "owner",
+      email: "owner@example.com",
+      user_metadata: { name: "Edward" },
+    },
+  },
+});
+row.paymongo_customer_id = null;
+items = [];
+globalThis.fetch = async (url, options) => {
+  if (url.endsWith("/customers")) {
+    const attrs = JSON.parse(options.body).data.attributes;
+    assert.equal(attrs.first_name, "Edward");
+    assert.equal(attrs.last_name, "Customer");
+    assert.equal(attrs.default_device, "email");
     return new Response(JSON.stringify({ data: { id: "cus_owner" } }), {
       status: 200,
     });
@@ -483,6 +509,23 @@ await assert.rejects(
 );
 assert(!JSON.stringify(logs).includes("DO_NOT_LOG_CUSTOMER_VALUE"));
 assert(JSON.stringify(logs).includes("fields=last_name"));
+globalThis.fetch = async () =>
+  new Response(
+    JSON.stringify({
+      errors: [
+        {
+          code: "merchant_invalid_state",
+          detail:
+            "no subscription payment methods are configured for this organization",
+        },
+      ],
+    }),
+    { status: 400 },
+  );
+await assert.rejects(
+  runtimeExports.paymongo("subscriptions/plans", {}),
+  /Ask PayMongo support to enable Subscriptions/,
+);
 console.error = originalConsole;
 globalThis.fetch = originalFetch;
 console.log(

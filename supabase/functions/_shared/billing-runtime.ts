@@ -105,6 +105,10 @@ export async function paymongo(
       operation,
       fieldNames ? `fields=${fieldNames}` : "fields=unspecified",
     );
+    if (codes.includes("merchant_invalid_state"))
+      throw new Error(
+        "PayMongo recurring billing is not enabled for this merchant account. Ask PayMongo support to enable Subscriptions and configure Card or Maya subscription payment methods for your test/live account. No payment was taken.",
+      );
     if (res.status === 401)
       throw new Error(
         "PayMongo rejected the API key. Check PAYMONGO_SECRET_KEY in Supabase Edge Function secrets.",

@@ -41,6 +41,12 @@ Run local tests/build/lint, then test the actual enabled merchant API: daily pla
 
 References: [Subscriptions](https://docs.paymongo.com/docs/payment-acceptance-subscriptions), [Plan currency](https://docs.paymongo.com/reference/plan-resource), [Webhook authentication](https://docs.paymongo.com/docs/developer-tools-webhook-setup-management), [Exchange rate endpoint](https://www.exchangerate-api.com/docs/free).
 
-## Checkout CORS errors
+## Merchant subscription activation
+
+Customer creation requires `default_device: "email"` and nonempty first/last names. Single-name signup profiles use `Customer` as the provider surname fallback.
+
+On October 11, 2026, a real test-mode API check confirmed corrected customer creation succeeds. Plan creation was blocked with `merchant_invalid_state`: "no subscription payment methods are configured for this organization". The synthetic customer was deleted; no subscription or payment was created. Ask PayMongo support to enable Subscriptions and configure Card or Maya subscription methods for the merchant's intended test/live environment. API keys and a webhook alone do not enable this capability. Full payment and renewal acceptance testing remains pending activation.
+
+## Checkout origin configuration
 
 An OPTIONS 403 prevents the browser from sending checkout. Deploy the current billing handler, which answers preflight independently and applies the origin allowlist to actual POST requests. Set APP_URL to the exact browser origin (scheme, hostname and port). For additional intended frontend origins, set BILLING_ALLOWED_ORIGINS to a comma-separated list of exact origins, such as `http://localhost:5173,https://preview.example.com`. Do not use wildcards. Allowed origins also determine the safe payment return origin. Authentication and entitlement verification remain required.

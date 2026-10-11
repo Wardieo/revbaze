@@ -90,18 +90,20 @@ Deno.serve(async (request: Request) => {
     if (!row.paymongo_customer_id) {
       if (input.action !== "checkout")
         throw new Error("Choose a paid plan first");
+      const metadata = data.user.user_metadata || {};
       const fullName = String(
-        data.user.user_metadata?.name ||
-          data.user.user_metadata?.full_name ||
-          "Revbaze customer",
+        metadata.name || metadata.full_name || "Revbaze customer",
       )
         .trim()
         .split(/\s+/);
       const created = (
         await paymongo("customers", {
-          first_name: data.user.user_metadata?.first_name || fullName[0],
+          first_name:
+            String(metadata.first_name || fullName[0]).trim() || "Revbaze",
           last_name:
-            data.user.user_metadata?.last_name || fullName.slice(1).join(" "),
+            String(metadata.last_name || fullName.slice(1).join(" ")).trim() ||
+            "Customer",
+          default_device: "email",
           ...(data.user.phone ? { phone: data.user.phone } : {}),
           email: data.user.email,
         })
